@@ -38,7 +38,7 @@
 
 ### 5. Configure Vercel
 - [ ] Create `vercel.json`:
-  - [ ] Add cron job for `/api/fetch-reddit` (hourly)
+  - [ ] Add cron job for `/api/fetch-reddit` (every 10 minutes)
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
 - [ ] Update `package.json`:
@@ -53,20 +53,46 @@
   - [ ] `KV_REST_API_TOKEN` - Automatically set by Vercel
   - [ ] `REDDIT_KEYWORDS` - Optional, comma-separated keywords
 
-### 7. Local Development
+### 7. Testing with Jest
+- [ ] Install Jest and testing dependencies:
+  - [ ] `jest` and `@types/jest`
+  - [ ] `node-mocks-http` for API testing
+  - [ ] `@vercel/kv` mock setup
+- [ ] Create test files:
+  - [ ] `/api/fetch-reddit.test.js` - Test Reddit fetching logic
+    - [ ] Mock fetch calls to Reddit API
+    - [ ] Test duplicate detection
+    - [ ] Test error handling
+  - [ ] `/api/posts.test.js` - Test posts retrieval
+    - [ ] Mock KV storage responses
+    - [ ] Test pagination
+    - [ ] Test empty state
+- [ ] Add test scripts to `package.json`:
+  - [ ] `"test": "jest"`
+  - [ ] `"test:watch": "jest --watch"`
+  - [ ] `"test:coverage": "jest --coverage"`
+- [ ] Configure `jest.config.js`:
+  - [ ] Set test environment to `node`
+  - [ ] Configure coverage thresholds
+  - [ ] Set up module mocks
+- [ ] Run tests before each deployment
+- [ ] Aim for >80% code coverage
+
+### 8. Local Development
 - [ ] Install Vercel CLI: `npm i -g vercel`
 - [ ] Run `vercel dev` to test locally
 - [ ] Test all endpoints
 - [ ] Verify KV storage works
+- [ ] Run Jest tests: `npm test`
 
-### 8. Deployment
+### 9. Deployment
 - [ ] Connect GitHub repo to Vercel
 - [ ] Deploy with `vercel --prod`
 - [ ] Verify cron job runs
 - [ ] Test live endpoints
 - [ ] Monitor logs for errors
 
-### 9. Optional Enhancements
+### 10. Optional Enhancements
 - [ ] Add search/filter functionality
 - [ ] Implement webhook for real-time updates
 - [ ] Add RSS feed endpoint
@@ -77,12 +103,15 @@
 ```
 /api
   fetch-reddit.js
+  fetch-reddit.test.js
   posts.js
+  posts.test.js
 /public
   index.html
   style.css
   script.js
 package.json
+jest.config.js
 vercel.json
 plan.md
 README.md
@@ -92,5 +121,7 @@ README.md
 ## Notes
 - Vercel KV free tier: 3000 requests/day, 256MB storage
 - Cron jobs run in UTC timezone
+- Cron syntax for every 10 minutes: `*/10 * * * *`
 - Serverless functions have 10-second timeout (default)
 - Consider rate limiting to prevent abuse
+- 144 fetches per day (every 10 min) is well within Reddit's limits
