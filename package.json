@@ -1,22 +1,32 @@
 {
   "name": "reddit-feed",
   "version": "1.0.0",
-  "description": "A Node.js script to fetch and track Reddit posts by keyword",
-  "main": "reddit.js",
+  "description": "A Node.js app to fetch and track Reddit posts by keyword with web interface",
+  "main": "server.js",
   "scripts": {
     "start": "node reddit.js",
-    "fetch": "node reddit.js"
+    "fetch": "node reddit.js",
+    "dev": "node server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "reddit",
     "api",
     "feed",
-    "search"
+    "search",
+    "vercel"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "node-mocks-http": "^1.13.0"
   },
   "engines": {
     "node": ">=22.0.0"

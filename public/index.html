@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reddit Feed</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Reddit Feed</h1>
+      <button id="fetch-btn" class="btn btn-primary">Fetch New Posts</button>
+    </header>
+
+    <section class="keywords-section">
+      <h2>Keywords</h2>
+      <div class="keywords-container">
+        <div class="keyword-input">
+          <input type="text" id="keyword-input" placeholder="Add a keyword">
+          <button id="add-keyword-btn" class="btn btn-secondary">Add</button>
+        </div>
+        <div id="keywords-list" class="keywords-list"></div>
+      </div>
+    </section>
+
+    <section class="filter-section">
+      <h2>Filter Posts</h2>
+      <select id="keyword-filter">
+        <option value="">All Keywords</option>
+      </select>
+    </section>
+
+    <section class="posts-section">
+      <h2>Posts</h2>
+      <div id="posts-container" class="posts-container">
+        <p class="loading">Loading posts...</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

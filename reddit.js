@@ -1,4 +1,4 @@
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+// Node.js 22+ has native fetch, no import needed
 const fs = require('fs').promises;
 const path = require('path');
 

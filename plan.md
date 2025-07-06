@@ -3,21 +3,21 @@
 ## Project Setup Checklist
 
 ### 1. Prepare Project Structure
-- [ ] Create `/api` directory for serverless functions
-- [ ] Create `/public` directory for frontend files
-- [ ] Move `reddit.js` logic into serverless function format
+- [x] Create `/api` directory for serverless functions
+- [x] Create `/public` directory for frontend files
+- [x] Move `reddit.js` logic into serverless function format
 
 ### 2. Local Development Setup
-- [ ] Create initial serverless function structure
-- [ ] Set up local storage abstraction layer:
-  - [ ] Create `lib/storage.js` with interface for get/set/delete
-  - [ ] Implement local JSON file storage for development
-  - [ ] Design to easily swap to Vercel KV later
-- [ ] Convert `reddit.js` to work with storage abstraction
-- [ ] Create basic Express server for local testing:
-  - [ ] `server.js` to simulate Vercel's serverless environment
-  - [ ] Mount API routes at `/api/*`
-  - [ ] Serve static files from `/public`
+- [x] Create initial serverless function structure
+- [x] Set up local storage abstraction layer:
+  - [x] Create `lib/storage.js` with interface for get/set/delete
+  - [x] Implement local JSON file storage for development
+  - [x] Design to easily swap to Vercel KV later
+- [x] Convert `reddit.js` to work with storage abstraction
+- [x] Create basic Express server for local testing:
+  - [x] `server.js` to simulate Vercel's serverless environment
+  - [x] Mount API routes at `/api/*`
+  - [x] Serve static files from `/public`
 - [ ] Test core functionality locally:
   - [ ] Fetching Reddit posts
   - [ ] Storing/retrieving posts
@@ -25,17 +25,17 @@
   - [ ] Basic frontend display
 
 ### 3. Create Serverless Functions
-- [ ] `/api/fetch-reddit.js` - Convert reddit.js to serverless function
-  - [ ] Remove direct file system operations
-  - [ ] Use storage abstraction layer
-  - [ ] Return JSON response instead of console output
-- [ ] `/api/posts.js` - Endpoint to retrieve stored posts
-  - [ ] Use storage abstraction layer
-  - [ ] Return posts sorted by date
+- [x] `/api/fetch-reddit.js` - Convert reddit.js to serverless function
+  - [x] Remove direct file system operations
+  - [x] Use storage abstraction layer
+  - [x] Return JSON response instead of console output
+- [x] `/api/posts.js` - Endpoint to retrieve stored posts
+  - [x] Use storage abstraction layer
+  - [x] Return posts sorted by date
   - [ ] Add pagination support (optional)
-  - [ ] Accept `?keyword=` query parameter to filter posts
-  - [ ] Return all posts if no keyword specified
-  - [ ] Store posts with keyword metadata
+  - [x] Accept `?keyword=` query parameter to filter posts
+  - [x] Return all posts if no keyword specified
+  - [x] Store posts with keyword metadata
 
 ### 4. Set Up Storage (Vercel KV)
 - [ ] Enable Vercel KV in Vercel dashboard
@@ -50,38 +50,38 @@
   - [ ] Posts can appear under multiple keywords if matched
   - [ ] Maintain separate posted ID sets per keyword
 - [ ] Create keyword management:
-  - [ ] `/api/keywords.js` - GET/POST/DELETE keywords
-  - [ ] Default keywords if none configured
+  - [x] `/api/keywords.js` - GET/POST/DELETE keywords
+  - [x] Default keywords if none configured
   - [ ] UI for managing keywords in frontend
 
 ### 5. Create Frontend
-- [ ] `/public/index.html` - Main page
-  - [ ] Simple, clean design
-  - [ ] Fetch data from `/api/posts`
-  - [ ] Display posts in cards/list format
-  - [ ] Add keyword management section
-  - [ ] Keyword filter/tabs to view posts by keyword
-- [ ] `/public/style.css` - Basic styling
-- [ ] `/public/script.js` - Frontend JavaScript
-  - [ ] Fetch posts on load
-  - [ ] Add manual refresh button
-  - [ ] Show loading states
-  - [ ] Keyword management (add/remove/list)
-  - [ ] Save keywords via `/api/keywords`
-  - [ ] Filter posts by keyword using tabs or dropdown
-  - [ ] Update URL params when filtering (e.g., `?keyword=javascript`)
+- [x] `/public/index.html` - Main page
+  - [x] Simple, clean design
+  - [x] Fetch data from `/api/posts`
+  - [x] Display posts in cards/list format
+  - [x] Add keyword management section
+  - [x] Keyword filter/tabs to view posts by keyword
+- [x] `/public/style.css` - Basic styling
+- [x] `/public/script.js` - Frontend JavaScript
+  - [x] Fetch posts on load
+  - [x] Add manual refresh button
+  - [x] Show loading states
+  - [x] Keyword management (add/remove/list)
+  - [x] Save keywords via `/api/keywords`
+  - [x] Filter posts by keyword using tabs or dropdown
+  - [x] Update URL params when filtering (e.g., `?keyword=javascript`)
 
 ### 6. Configure Vercel
 - [ ] Create `vercel.json`:
   - [ ] Add cron job for `/api/fetch-reddit` (every 10 minutes)
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
-- [ ] Update `package.json`:
-  - [ ] Add `@vercel/kv` dependency
-  - [ ] Add `express` for local development
-  - [ ] Remove `node-fetch` (native fetch in Node 22)
-  - [ ] Update scripts for Vercel
-  - [ ] Add `"dev": "node server.js"` script for local testing
+- [x] Update `package.json`:
+  - [ ] Add `@vercel/kv` dependency (pending for step 4)
+  - [x] Add `express` for local development
+  - [x] Remove `node-fetch` (native fetch in Node 22)
+  - [ ] Update scripts for Vercel (pending)
+  - [x] Add `"dev": "node server.js"` script for local testing
 
 ### 7. Environment Variables
 - [ ] Set up in Vercel dashboard:

@@ -1,0 +1,111 @@
+const { getStorage } = require('../lib/storage');
+
+const CONFIG = {
+  searchUrl: 'https://www.reddit.com/search/.json',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+};
+
+async function fetchRedditPosts(keyword, storage) {
+  const postedIdsKey = `posted:${keyword}`;
+  const postsKey = `posts:${keyword}:${Date.now()}`;
+  
+  // Load previously posted IDs
+  const postedIds = new Set(await storage.smembers(postedIdsKey));
+  
+  // Search Reddit
+  const url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': CONFIG.userAgent }
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const newPosts = [];
+
+  // Filter out already posted items
+  for (const child of data.data.children) {
+    const post = child.data;
+    
+    if (postedIds.has(post.id)) {
+      continue; // Skip already posted
+    }
+
+    const postData = {
+      id: post.id,
+      title: post.title,
+      author: post.author,
+      url: `https://www.reddit.com${post.permalink}`,
+      created_utc: post.created_utc,
+      created: new Date(post.created_utc * 1000).toISOString(),
+      score: post.score,
+      num_comments: post.num_comments,
+      subreddit: post.subreddit_name_prefixed,
+      keyword: keyword
+    };
+
+    newPosts.push(postData);
+    await storage.sadd(postedIdsKey, post.id);
+  }
+
+  // Save new posts
+  if (newPosts.length > 0) {
+    await storage.set(postsKey, {
+      timestamp: new Date().toISOString(),
+      count: newPosts.length,
+      posts: newPosts
+    });
+  }
+
+  return newPosts;
+}
+
+module.exports = async (req, res) => {
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const storage = getStorage();
+    await storage.init();
+    
+    // Get keywords from storage or use default
+    const keywordsKey = 'config:keywords';
+    let keywords = await storage.get(keywordsKey);
+    
+    if (!keywords || keywords.length === 0) {
+      keywords = ['slack']; // Default keyword
+      await storage.set(keywordsKey, keywords);
+    }
+
+    const results = {};
+    
+    // Fetch posts for each keyword
+    for (const keyword of keywords) {
+      try {
+        const posts = await fetchRedditPosts(keyword, storage);
+        results[keyword] = {
+          success: true,
+          count: posts.length,
+          posts: posts
+        };
+      } catch (error) {
+        results[keyword] = {
+          success: false,
+          error: error.message
+        };
+      }
+    }
+
+    res.status(200).json({
+      timestamp: new Date().toISOString(),
+      keywords: keywords,
+      results: results
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
