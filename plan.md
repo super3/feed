@@ -7,20 +7,37 @@
 - [ ] Create `/public` directory for frontend files
 - [ ] Move `reddit.js` logic into serverless function format
 
-### 2. Create Serverless Functions
+### 2. Local Development Setup
+- [ ] Create initial serverless function structure
+- [ ] Set up local storage abstraction layer:
+  - [ ] Create `lib/storage.js` with interface for get/set/delete
+  - [ ] Implement local JSON file storage for development
+  - [ ] Design to easily swap to Vercel KV later
+- [ ] Convert `reddit.js` to work with storage abstraction
+- [ ] Create basic Express server for local testing:
+  - [ ] `server.js` to simulate Vercel's serverless environment
+  - [ ] Mount API routes at `/api/*`
+  - [ ] Serve static files from `/public`
+- [ ] Test core functionality locally:
+  - [ ] Fetching Reddit posts
+  - [ ] Storing/retrieving posts
+  - [ ] Keyword filtering
+  - [ ] Basic frontend display
+
+### 3. Create Serverless Functions
 - [ ] `/api/fetch-reddit.js` - Convert reddit.js to serverless function
-  - [ ] Remove file system operations (fs)
-  - [ ] Replace JSON file storage with Vercel KV
+  - [ ] Remove direct file system operations
+  - [ ] Use storage abstraction layer
   - [ ] Return JSON response instead of console output
 - [ ] `/api/posts.js` - Endpoint to retrieve stored posts
-  - [ ] Connect to Vercel KV
+  - [ ] Use storage abstraction layer
   - [ ] Return posts sorted by date
   - [ ] Add pagination support (optional)
   - [ ] Accept `?keyword=` query parameter to filter posts
   - [ ] Return all posts if no keyword specified
-  - [ ] Store posts with keyword metadata in KV
+  - [ ] Store posts with keyword metadata
 
-### 3. Set Up Storage (Vercel KV)
+### 4. Set Up Storage (Vercel KV)
 - [ ] Enable Vercel KV in Vercel dashboard
 - [ ] Install `@vercel/kv` package
 - [ ] Create KV instance
@@ -37,7 +54,7 @@
   - [ ] Default keywords if none configured
   - [ ] UI for managing keywords in frontend
 
-### 4. Create Frontend
+### 5. Create Frontend
 - [ ] `/public/index.html` - Main page
   - [ ] Simple, clean design
   - [ ] Fetch data from `/api/posts`
@@ -54,23 +71,25 @@
   - [ ] Filter posts by keyword using tabs or dropdown
   - [ ] Update URL params when filtering (e.g., `?keyword=javascript`)
 
-### 5. Configure Vercel
+### 6. Configure Vercel
 - [ ] Create `vercel.json`:
   - [ ] Add cron job for `/api/fetch-reddit` (every 10 minutes)
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
 - [ ] Update `package.json`:
   - [ ] Add `@vercel/kv` dependency
+  - [ ] Add `express` for local development
   - [ ] Remove `node-fetch` (native fetch in Node 22)
   - [ ] Update scripts for Vercel
+  - [ ] Add `"dev": "node server.js"` script for local testing
 
-### 6. Environment Variables
+### 7. Environment Variables
 - [ ] Set up in Vercel dashboard:
   - [ ] `KV_URL` - Automatically set by Vercel
   - [ ] `KV_REST_API_URL` - Automatically set by Vercel
   - [ ] `KV_REST_API_TOKEN` - Automatically set by Vercel
 
-### 7. Testing with Jest
+### 8. Testing with Jest
 - [ ] Install Jest and testing dependencies:
   - [ ] `jest` and `@types/jest`
   - [ ] `node-mocks-http` for API testing
@@ -95,21 +114,21 @@
 - [ ] Run tests before each deployment
 - [ ] Aim for >80% code coverage
 
-### 8. Local Development
+### 9. Final Vercel Integration
 - [ ] Install Vercel CLI: `npm i -g vercel`
 - [ ] Run `vercel dev` to test locally
 - [ ] Test all endpoints
 - [ ] Verify KV storage works
 - [ ] Run Jest tests: `npm test`
 
-### 9. Deployment
+### 10. Deployment
 - [ ] Connect GitHub repo to Vercel
 - [ ] Deploy with `vercel --prod`
 - [ ] Verify cron job runs
 - [ ] Test live endpoints
 - [ ] Monitor logs for errors
 
-### 10. Optional Enhancements
+### 11. Optional Enhancements
 - [ ] Add search/filter functionality
 - [ ] Implement webhook for real-time updates
 - [ ] Add RSS feed endpoint
@@ -125,10 +144,13 @@
   posts.test.js
   keywords.js
   keywords.test.js
+/lib
+  storage.js
 /public
   index.html
   style.css
   script.js
+server.js (for local development)
 package.json
 jest.config.js
 vercel.json
