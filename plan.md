@@ -24,17 +24,25 @@
 - [ ] Update code to use KV instead of JSON files:
   - [ ] Store posted IDs in KV set
   - [ ] Store post data in KV with timestamp keys
+  - [ ] Store keyword configuration in KV
+- [ ] Create keyword management:
+  - [ ] `/api/keywords.js` - GET/POST/DELETE keywords
+  - [ ] Default keywords if none configured
+  - [ ] UI for managing keywords in frontend
 
 ### 4. Create Frontend
 - [ ] `/public/index.html` - Main page
   - [ ] Simple, clean design
   - [ ] Fetch data from `/api/posts`
   - [ ] Display posts in cards/list format
+  - [ ] Add keyword management section
 - [ ] `/public/style.css` - Basic styling
 - [ ] `/public/script.js` - Frontend JavaScript
   - [ ] Fetch posts on load
   - [ ] Add manual refresh button
   - [ ] Show loading states
+  - [ ] Keyword management (add/remove/list)
+  - [ ] Save keywords via `/api/keywords`
 
 ### 5. Configure Vercel
 - [ ] Create `vercel.json`:
@@ -51,7 +59,6 @@
   - [ ] `KV_URL` - Automatically set by Vercel
   - [ ] `KV_REST_API_URL` - Automatically set by Vercel
   - [ ] `KV_REST_API_TOKEN` - Automatically set by Vercel
-  - [ ] `REDDIT_KEYWORDS` - Optional, comma-separated keywords
 
 ### 7. Testing with Jest
 - [ ] Install Jest and testing dependencies:
@@ -106,6 +113,8 @@
   fetch-reddit.test.js
   posts.js
   posts.test.js
+  keywords.js
+  keywords.test.js
 /public
   index.html
   style.css
