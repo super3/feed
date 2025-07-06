@@ -16,15 +16,22 @@
   - [ ] Connect to Vercel KV
   - [ ] Return posts sorted by date
   - [ ] Add pagination support (optional)
+  - [ ] Accept `?keyword=` query parameter to filter posts
+  - [ ] Return all posts if no keyword specified
+  - [ ] Store posts with keyword metadata in KV
 
 ### 3. Set Up Storage (Vercel KV)
 - [ ] Enable Vercel KV in Vercel dashboard
 - [ ] Install `@vercel/kv` package
 - [ ] Create KV instance
 - [ ] Update code to use KV instead of JSON files:
-  - [ ] Store posted IDs in KV set
-  - [ ] Store post data in KV with timestamp keys
-  - [ ] Store keyword configuration in KV
+  - [ ] Store posted IDs in KV set per keyword: `posted:${keyword}:${postId}`
+  - [ ] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
+  - [ ] Store keyword configuration: `config:keywords` (array)
+- [ ] Data structure:
+  - [ ] Each post includes the keyword it was fetched for
+  - [ ] Posts can appear under multiple keywords if matched
+  - [ ] Maintain separate posted ID sets per keyword
 - [ ] Create keyword management:
   - [ ] `/api/keywords.js` - GET/POST/DELETE keywords
   - [ ] Default keywords if none configured
@@ -36,6 +43,7 @@
   - [ ] Fetch data from `/api/posts`
   - [ ] Display posts in cards/list format
   - [ ] Add keyword management section
+  - [ ] Keyword filter/tabs to view posts by keyword
 - [ ] `/public/style.css` - Basic styling
 - [ ] `/public/script.js` - Frontend JavaScript
   - [ ] Fetch posts on load
@@ -43,6 +51,8 @@
   - [ ] Show loading states
   - [ ] Keyword management (add/remove/list)
   - [ ] Save keywords via `/api/keywords`
+  - [ ] Filter posts by keyword using tabs or dropdown
+  - [ ] Update URL params when filtering (e.g., `?keyword=javascript`)
 
 ### 5. Configure Vercel
 - [ ] Create `vercel.json`:
