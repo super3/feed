@@ -1,0 +1,24 @@
+{
+  "name": "reddit-feed",
+  "version": "1.0.0",
+  "description": "A Node.js script to fetch and track Reddit posts by keyword",
+  "main": "reddit.js",
+  "scripts": {
+    "start": "node reddit.js",
+    "fetch": "node reddit.js"
+  },
+  "keywords": [
+    "reddit",
+    "api",
+    "feed",
+    "search"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
