@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # Reddit data files
 reddit-data.json
 reddit-output.json
+
+# OS files
+.DS_Store
