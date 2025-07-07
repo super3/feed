@@ -1,5 +1,8 @@
 # Reddit Feed
 
+[![Run Tests](https://github.com/super3/feed/actions/workflows/test.yml/badge.svg)](https://github.com/super3/feed/actions/workflows/test.yml)
+[![CI](https://github.com/super3/feed/actions/workflows/ci.yml/badge.svg)](https://github.com/super3/feed/actions/workflows/ci.yml)
+
 Fetches and tracks Reddit posts by keyword, preventing duplicates and saving results to JSON.
 
 ## Setup
