@@ -7,7 +7,6 @@ let currentFilter = '';
 const keywordInput = document.getElementById('keyword-input');
 const addKeywordBtn = document.getElementById('add-keyword-btn');
 const keywordsList = document.getElementById('keywords-list');
-const keywordFilter = document.getElementById('keyword-filter');
 const fetchBtn = document.getElementById('fetch-btn');
 const postsContainer = document.getElementById('posts-container');
 
@@ -20,12 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
   addKeywordBtn.addEventListener('click', addKeyword);
   keywordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addKeyword();
-  });
-  
-  keywordFilter.addEventListener('change', (e) => {
-    currentFilter = e.target.value;
-    updateURL();
-    displayPosts();
   });
   
   fetchBtn.addEventListener('click', fetchNewPosts);
@@ -99,27 +92,33 @@ async function deleteKeyword(keyword) {
 // Update keywords display
 function updateKeywordsDisplay() {
   keywordsList.innerHTML = keywords.map(keyword => `
-    <div class="keyword-tag">
+    <div class="keyword-tag ${currentFilter === keyword ? 'active' : ''}" onclick="filterByKeyword('${keyword}')" style="cursor: pointer;">
       ${keyword}
-      <button class="btn btn-danger" onclick="deleteKeyword('${keyword}')">×</button>
+      <button class="btn btn-danger" onclick="event.stopPropagation(); deleteKeyword('${keyword}')">×</button>
     </div>
   `).join('');
+  
+  // Add "All" tag at the beginning
+  keywordsList.innerHTML = `
+    <div class="keyword-tag ${currentFilter === '' ? 'active' : ''}" onclick="filterByKeyword('')" style="cursor: pointer;">
+      All
+    </div>
+  ` + keywordsList.innerHTML;
+}
+
+// Filter by keyword when tag is clicked
+function filterByKeyword(keyword) {
+  currentFilter = keyword;
+  updateURL();
+  loadPosts();
+  updateKeywordsDisplay();
 }
 
 // Update filter options
 function updateFilterOptions() {
-  const currentValue = keywordFilter.value;
-  keywordFilter.innerHTML = '<option value="">All Keywords</option>';
-  
-  keywords.forEach(keyword => {
-    const option = document.createElement('option');
-    option.value = keyword;
-    option.textContent = keyword;
-    if (keyword === currentFilter) {
-      option.selected = true;
-    }
-    keywordFilter.appendChild(option);
-  });
+  // No longer needed since we removed the dropdown
+  // Just update the keyword display to show active state
+  updateKeywordsDisplay();
 }
 
 // Load posts from API

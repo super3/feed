@@ -75,7 +75,7 @@ h2 {
   background-color: #c82333;
 }
 
-.keywords-section, .filter-section, .posts-section {
+.keywords-section, .posts-section {
   background: white;
   padding: 20px;
   border-radius: 10px;
@@ -106,11 +106,49 @@ h2 {
 .keyword-tag {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 15px;
+  gap: 12px;
+  padding: 8px 12px 8px 15px;
   background-color: #f0f0f0;
   border-radius: 20px;
   font-size: 14px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.keyword-tag:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-1px);
+}
+
+.keyword-tag.active {
+  background-color: #ff4500;
+  color: white;
+}
+
+.keyword-tag.active:hover {
+  background-color: #e03e00;
+}
+
+.keyword-tag .btn-danger {
+  margin-left: 4px;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.keyword-tag.active .btn-danger {
+  background-color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.keyword-tag.active .btn-danger:hover {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 #keyword-filter {
