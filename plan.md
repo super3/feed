@@ -18,11 +18,12 @@
   - [x] `server.js` to simulate Vercel's serverless environment
   - [x] Mount API routes at `/api/*`
   - [x] Serve static files from `/public`
-- [ ] Test core functionality locally:
-  - [ ] Fetching Reddit posts
-  - [ ] Storing/retrieving posts
-  - [ ] Keyword filtering
-  - [ ] Basic frontend display
+- [x] Test core functionality with Jest:
+  - [x] Create jest.config.js
+  - [x] Test storage abstraction layer
+  - [x] Test API endpoints with mocked Reddit responses
+  - [x] Test keyword management
+  - [x] Run test suite and verify coverage
 
 ### 3. Create Serverless Functions
 - [x] `/api/fetch-reddit.js` - Convert reddit.js to serverless function
