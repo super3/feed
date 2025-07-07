@@ -53,7 +53,8 @@ describe('/api/fetch-reddit', () => {
               created_utc: 1704067200,
               score: 42,
               num_comments: 10,
-              subreddit_name_prefixed: 'r/javascript'
+              subreddit_name_prefixed: 'r/javascript',
+              selftext: 'This is the post content'
             }
           }
         ]
@@ -125,7 +126,8 @@ describe('/api/fetch-reddit', () => {
               created_utc: 1704067200,
               score: 10,
               num_comments: 5,
-              subreddit_name_prefixed: 'r/javascript'
+              subreddit_name_prefixed: 'r/javascript',
+              selftext: ''
             }
           }
         ]

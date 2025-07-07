@@ -38,6 +38,7 @@ async function fetchRedditPosts(keyword, storage) {
       title: post.title,
       author: post.author,
       url: `https://www.reddit.com${post.permalink}`,
+      selftext: post.selftext || '',
       created_utc: post.created_utc,
       created: new Date(post.created_utc * 1000).toISOString(),
       score: post.score,
