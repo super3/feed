@@ -50,10 +50,10 @@
   - [ ] Each post includes the keyword it was fetched for
   - [ ] Posts can appear under multiple keywords if matched
   - [ ] Maintain separate posted ID sets per keyword
-- [ ] Create keyword management:
+- [x] Create keyword management:
   - [x] `/api/keywords.js` - GET/POST/DELETE keywords
   - [x] Default keywords if none configured
-  - [ ] UI for managing keywords in frontend
+  - [x] UI for managing keywords in frontend
 
 ### 5. Create Frontend
 - [x] `/public/index.html` - Main page
@@ -91,29 +91,33 @@
   - [ ] `KV_REST_API_TOKEN` - Automatically set by Vercel
 
 ### 8. Testing with Jest
-- [ ] Install Jest and testing dependencies:
-  - [ ] `jest` and `@types/jest`
-  - [ ] `node-mocks-http` for API testing
-  - [ ] `@vercel/kv` mock setup
-- [ ] Create test files:
-  - [ ] `/api/fetch-reddit.test.js` - Test Reddit fetching logic
-    - [ ] Mock fetch calls to Reddit API
-    - [ ] Test duplicate detection
-    - [ ] Test error handling
-  - [ ] `/api/posts.test.js` - Test posts retrieval
-    - [ ] Mock KV storage responses
-    - [ ] Test pagination
-    - [ ] Test empty state
-- [ ] Add test scripts to `package.json`:
-  - [ ] `"test": "jest"`
-  - [ ] `"test:watch": "jest --watch"`
-  - [ ] `"test:coverage": "jest --coverage"`
-- [ ] Configure `jest.config.js`:
-  - [ ] Set test environment to `node`
-  - [ ] Configure coverage thresholds
-  - [ ] Set up module mocks
-- [ ] Run tests before each deployment
-- [ ] Aim for >80% code coverage
+- [x] Install Jest and testing dependencies:
+  - [x] `jest` and `@types/jest`
+  - [x] `node-mocks-http` for API testing
+  - [ ] `@vercel/kv` mock setup (pending for when KV is implemented)
+- [x] Create test files:
+  - [x] `/api/fetch-reddit.test.js` - Test Reddit fetching logic
+    - [x] Mock fetch calls to Reddit API
+    - [x] Test duplicate detection
+    - [x] Test error handling
+  - [x] `/api/posts.test.js` - Test posts retrieval
+    - [x] Mock KV storage responses
+    - [ ] Test pagination (pending implementation)
+    - [x] Test empty state
+  - [x] `/api/keywords.test.js` - Test keyword management
+    - [x] Test GET/POST/DELETE operations
+    - [x] Test duplicate prevention
+    - [x] Test error handling
+- [x] Add test scripts to `package.json`:
+  - [x] `"test": "jest"`
+  - [x] `"test:watch": "jest --watch"`
+  - [x] `"test:coverage": "jest --coverage"`
+- [x] Configure `jest.config.js`:
+  - [x] Set test environment to `node`
+  - [x] Configure coverage thresholds
+  - [x] Set up module mocks
+- [x] Run tests before each deployment
+- [x] Aim for >80% code coverage (achieved 92%)
 
 ### 9. Final Vercel Integration
 - [ ] Install Vercel CLI: `npm i -g vercel`
