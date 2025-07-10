@@ -340,7 +340,8 @@ async function applyContextFilter() {
     data.results.forEach(result => {
       const card = postCards[result.index];
       if (card) {
-        card.classList.remove('filtering');
+        // Remove all filter-related classes first
+        card.classList.remove('filtering', 'relevant', 'filtered-out');
         
         if (result.relevant) {
           card.classList.add('relevant');
