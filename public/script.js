@@ -307,23 +307,47 @@ async function applyContextFilter() {
     card.classList.add('filtering');
   });
   
-  // Simulate AI filtering (placeholder for actual implementation)
-  setTimeout(() => {
+  try {
+    // Prepare posts data for API
+    const postsData = posts.map(post => ({
+      title: post.title,
+      selftext: post.selftext || ''
+    }));
+    
+    // Call the context filter API
+    const response = await fetch('/api/filter-context', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        keyword: currentFilter,
+        context: context,
+        posts: postsData
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.hint || error.error || 'Failed to filter posts');
+    }
+    
+    const data = await response.json();
     const postCards = document.querySelectorAll('.post-card');
     let relevantCount = 0;
     
-    // For demo purposes, randomly mark some posts as relevant
-    postCards.forEach((card, index) => {
-      card.classList.remove('filtering');
-      
-      // Placeholder logic - in real implementation, this would call an AI API
-      const isRelevant = Math.random() > 0.5;
-      
-      if (isRelevant) {
-        card.classList.add('relevant');
-        relevantCount++;
-      } else {
-        card.classList.add('filtered-out');
+    // Apply filtering results
+    data.results.forEach(result => {
+      const card = postCards[result.index];
+      if (card) {
+        card.classList.remove('filtering');
+        
+        if (result.relevant) {
+          card.classList.add('relevant');
+          relevantCount++;
+        } else {
+          card.classList.add('filtered-out');
+        }
       }
     });
     
@@ -335,7 +359,24 @@ async function applyContextFilter() {
     if (postsTitle) {
       postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
     }
-  }, 1500);
+  } catch (error) {
+    console.error('Context filtering error:', error);
+    
+    // Remove filtering state
+    document.querySelectorAll('.post-card').forEach(card => {
+      card.classList.remove('filtering');
+    });
+    
+    // Show error to user
+    filterStatus.textContent = `Error: ${error.message}`;
+    
+    // If it's likely LM Studio is not running, provide helpful message
+    if (error.message.includes('LM Studio')) {
+      alert('Unable to connect to LM Studio. Please ensure it is running on http://localhost:1234');
+    } else {
+      alert(`Filtering failed: ${error.message}`);
+    }
+  }
 }
 
 // Clear context filter
