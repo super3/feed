@@ -180,8 +180,8 @@ h2 {
 .btn-filter {
   background-color: #6c757d;
   color: white;
-  padding: 6px 14px;
-  font-size: 14px;
+  padding: 10px 20px;
+  font-size: 16px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -197,7 +197,7 @@ h2 {
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px 20px 15px 20px;
   margin-bottom: 20px;
 }
 
@@ -205,6 +205,12 @@ h2 {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.filter-content .btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: normal;
 }
 
 #context-input {
@@ -216,9 +222,12 @@ h2 {
 }
 
 .filter-status {
-  margin-top: 10px;
   font-size: 14px;
   color: #6c757d;
+}
+
+.filter-status:not(:empty) {
+  margin-top: 10px;
 }
 
 .posts-container {
@@ -252,14 +261,15 @@ h2 {
 .post-card.relevant::before {
   content: "✓ Relevant";
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 55px;
+  right: 12px;
   background-color: #28a745;
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+  z-index: 10;
 }
 
 .reddit-link-btn {
