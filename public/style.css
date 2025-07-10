@@ -28,7 +28,7 @@ header {
 
 h1 {
   color: #ff4500;
-  font-size: 2.5rem;
+  font-size: 1.75rem;
 }
 
 h2 {
@@ -49,6 +49,11 @@ h2 {
 .btn-primary {
   background-color: #ff4500;
   color: white;
+  padding: 12px 28px;
+  font-size: 17px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-primary:hover {
