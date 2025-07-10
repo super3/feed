@@ -12,6 +12,20 @@ const postsContainer = document.getElementById('posts-container');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  // Check URL for keyword filter FIRST
+  const urlParams = new URLSearchParams(window.location.search);
+  const keywordParam = urlParams.get('keyword');
+  if (keywordParam) {
+    currentFilter = keywordParam;
+  }
+  
+  // Update title on initial load
+  const postsTitle = document.querySelector('.posts-section h2');
+  if (postsTitle) {
+    postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
+  }
+  
+  // Now load data with the correct filter
   loadKeywords();
   loadPosts();
   
@@ -22,13 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   fetchBtn.addEventListener('click', fetchNewPosts);
-  
-  // Check URL for keyword filter
-  const urlParams = new URLSearchParams(window.location.search);
-  const keywordParam = urlParams.get('keyword');
-  if (keywordParam) {
-    currentFilter = keywordParam;
-  }
 });
 
 // Load keywords from API
@@ -142,6 +149,12 @@ async function loadPosts() {
 
 // Display posts
 function displayPosts() {
+  // Update the section title based on current filter
+  const postsTitle = document.querySelector('.posts-section h2');
+  if (postsTitle) {
+    postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
+  }
+  
   if (posts.length === 0) {
     postsContainer.innerHTML = '<p class="loading">No posts found</p>';
     return;
@@ -156,18 +169,17 @@ function displayPosts() {
       </a>
       <details class="post-wrapper">
         <summary class="post-header">
-          <h3 class="post-title">${post.title}</h3>
+          <h3 class="post-title">${highlightKeyword(escapeHtml(post.title), currentFilter)}</h3>
           <div class="post-meta">
             <span>📍 ${post.subreddit}</span>
             <span>👤 ${post.author}</span>
             <span>⬆️ ${post.score}</span>
             <span>💬 ${post.num_comments}</span>
             <span>🕒 ${new Date(post.created).toLocaleString()}</span>
-            <span class="keyword-badge">${post.keyword}</span>
           </div>
         </summary>
         <div class="post-content">
-          ${post.selftext ? `<div class="post-selftext">${escapeHtml(post.selftext)}</div>` : '<p><em>No text content (link post)</em></p>'}
+          ${post.selftext ? `<div class="post-selftext">${highlightKeyword(escapeHtml(post.selftext), currentFilter)}</div>` : '<p><em>No text content (link post)</em></p>'}
         </div>
       </details>
     </div>
@@ -186,6 +198,20 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text.trim();
   return div.innerHTML.replace(/\n/g, '<br>');
+}
+
+// Helper function to highlight keywords in text
+function highlightKeyword(text, keyword) {
+  if (!keyword || !text) return text;
+  
+  // Escape the keyword for use in regex
+  const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Create regex with case-insensitive flag
+  const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+  
+  // Replace matches with bold text
+  return text.replace(regex, '<strong>$1</strong>');
 }
 
 // Fetch new posts
