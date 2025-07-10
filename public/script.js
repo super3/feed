@@ -2,6 +2,7 @@
 let keywords = [];
 let posts = [];
 let currentFilter = '';
+let contextFilter = '';
 
 // DOM elements
 const keywordInput = document.getElementById('keyword-input');
@@ -9,6 +10,12 @@ const addKeywordBtn = document.getElementById('add-keyword-btn');
 const keywordsList = document.getElementById('keywords-list');
 const fetchBtn = document.getElementById('fetch-btn');
 const postsContainer = document.getElementById('posts-container');
+const contextFilterToggle = document.getElementById('context-filter-toggle');
+const contextFilterPanel = document.getElementById('context-filter-panel');
+const contextInput = document.getElementById('context-input');
+const applyFilterBtn = document.getElementById('apply-filter-btn');
+const clearFilterBtn = document.getElementById('clear-filter-btn');
+const filterStatus = document.getElementById('filter-status');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   fetchBtn.addEventListener('click', fetchNewPosts);
+  
+  // Context filter event listeners
+  contextFilterToggle.addEventListener('click', toggleFilterPanel);
+  applyFilterBtn.addEventListener('click', applyContextFilter);
+  clearFilterBtn.addEventListener('click', clearContextFilter);
+  contextInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') applyContextFilter();
+  });
 });
 
 // Load keywords from API
@@ -155,6 +170,14 @@ function displayPosts() {
     postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
   }
   
+  // Show/hide context filter button based on whether we have a keyword filter
+  if (currentFilter) {
+    contextFilterToggle.style.display = 'inline-flex';
+  } else {
+    contextFilterToggle.style.display = 'none';
+    contextFilterPanel.style.display = 'none';
+  }
+  
   if (posts.length === 0) {
     postsContainer.innerHTML = '<p class="loading">No posts found</p>';
     return;
@@ -236,7 +259,13 @@ async function fetchNewPosts() {
     alert('Failed to fetch new posts');
   } finally {
     fetchBtn.disabled = false;
-    fetchBtn.textContent = 'Fetch New Posts';
+    fetchBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 32 32" style="margin-right: 6px; vertical-align: text-bottom;">
+        <circle cx="13" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M18.5 18.5 L26 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      Fetch
+    `;
   }
 }
 
@@ -249,4 +278,80 @@ function updateURL() {
     url.searchParams.delete('keyword');
   }
   window.history.pushState({}, '', url);
+}
+
+// Toggle filter panel visibility
+function toggleFilterPanel() {
+  const isVisible = contextFilterPanel.style.display !== 'none';
+  contextFilterPanel.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) {
+    contextInput.focus();
+  }
+}
+
+// Apply context filter
+async function applyContextFilter() {
+  const context = contextInput.value.trim();
+  if (!context) {
+    alert('Please enter a context description');
+    return;
+  }
+  
+  contextFilter = context;
+  
+  // Update filter status
+  filterStatus.textContent = `Filtering posts about "${currentFilter}" in the context of "${context}"...`;
+  
+  // Add filtering class to all posts
+  document.querySelectorAll('.post-card').forEach(card => {
+    card.classList.add('filtering');
+  });
+  
+  // Simulate AI filtering (placeholder for actual implementation)
+  setTimeout(() => {
+    const postCards = document.querySelectorAll('.post-card');
+    let relevantCount = 0;
+    
+    // For demo purposes, randomly mark some posts as relevant
+    postCards.forEach((card, index) => {
+      card.classList.remove('filtering');
+      
+      // Placeholder logic - in real implementation, this would call an AI API
+      const isRelevant = Math.random() > 0.5;
+      
+      if (isRelevant) {
+        card.classList.add('relevant');
+        relevantCount++;
+      } else {
+        card.classList.add('filtered-out');
+      }
+    });
+    
+    // Update status
+    filterStatus.textContent = `Showing ${relevantCount} of ${postCards.length} posts about "${currentFilter}" (${context})`;
+    
+    // Update title
+    const postsTitle = document.querySelector('.posts-section h2');
+    if (postsTitle) {
+      postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+    }
+  }, 1500);
+}
+
+// Clear context filter
+function clearContextFilter() {
+  contextFilter = '';
+  contextInput.value = '';
+  filterStatus.textContent = '';
+  
+  // Remove all filter classes
+  document.querySelectorAll('.post-card').forEach(card => {
+    card.classList.remove('filtering', 'filtered-out', 'relevant');
+  });
+  
+  // Reset title
+  const postsTitle = document.querySelector('.posts-section h2');
+  if (postsTitle) {
+    postsTitle.textContent = `Posts mentioning "${currentFilter}"`;
+  }
 }

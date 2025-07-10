@@ -32,7 +32,23 @@
     </section>
 
     <section class="posts-section">
-      <h2>Posts</h2>
+      <div class="posts-header">
+        <h2>Posts</h2>
+        <button id="context-filter-toggle" class="btn btn-filter" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+          </svg>
+          Filter by Context
+        </button>
+      </div>
+      <div id="context-filter-panel" class="context-filter-panel" style="display: none;">
+        <div class="filter-content">
+          <input type="text" id="context-input" placeholder="Describe the context (e.g., 'the note-taking app')" />
+          <button id="apply-filter-btn" class="btn btn-primary">Apply Filter</button>
+          <button id="clear-filter-btn" class="btn btn-secondary">Clear</button>
+        </div>
+        <div id="filter-status" class="filter-status"></div>
+      </div>
       <div id="posts-container" class="posts-container">
         <p class="loading">Loading posts...</p>
       </div>
