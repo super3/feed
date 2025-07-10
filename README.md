@@ -75,6 +75,12 @@ export LM_STUDIO_MODEL="your-model-name"
 
 # Optional: Specify a different LM Studio URL
 export LM_STUDIO_URL="http://localhost:8080"
+
+# Optional: Specify request timeout in milliseconds (default: 60000)
+export LM_STUDIO_TIMEOUT="120000"  # 2 minutes
+
+# Optional: Specify batch size for concurrent requests (default: 3)
+export LM_STUDIO_BATCH_SIZE="2"  # Process 2 posts at a time
 ```
 
 ### Usage

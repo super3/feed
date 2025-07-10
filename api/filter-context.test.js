@@ -4,6 +4,18 @@ const { createMocks } = require('node-mocks-http');
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Mock AbortController if not available in test environment
+if (!global.AbortController) {
+  global.AbortController = class {
+    constructor() {
+      this.signal = { aborted: false };
+    }
+    abort() {
+      this.signal.aborted = true;
+    }
+  };
+}
+
 // Mock console to suppress error logs in tests
 const originalConsoleError = console.error;
 const originalConsoleLog = console.log;
@@ -84,8 +96,8 @@ describe('/api/filter-context', () => {
       expect(res._getStatusCode()).toBe(200);
       const data = JSON.parse(res._getData());
       expect(data.results).toHaveLength(2);
-      expect(data.results[0]).toEqual({ index: 0, relevant: true });
-      expect(data.results[1]).toEqual({ index: 1, relevant: false });
+      expect(data.results[0]).toEqual({ index: 0, relevant: true, reasoning: 'YES' });
+      expect(data.results[1]).toEqual({ index: 1, relevant: false, reasoning: 'NO' });
     });
 
     it('should handle LM Studio errors gracefully', async () => {

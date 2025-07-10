@@ -348,6 +348,11 @@ async function applyContextFilter() {
         } else {
           card.classList.add('filtered-out');
         }
+        
+        // Add reasoning to the card
+        if (result.reasoning) {
+          addReasoningToCard(card, result.reasoning);
+        }
       }
     });
     
@@ -379,15 +384,73 @@ async function applyContextFilter() {
   }
 }
 
+// Add reasoning to a post card
+function addReasoningToCard(card, reasoning) {
+  // Remove any existing reasoning element
+  const existingReasoning = card.querySelector('.ai-reasoning');
+  if (existingReasoning) {
+    existingReasoning.remove();
+  }
+  
+  // Create collapsible reasoning element
+  const reasoningEl = document.createElement('details');
+  reasoningEl.className = 'ai-reasoning';
+  
+  const summary = document.createElement('summary');
+  summary.textContent = '🤖 AI Reasoning';
+  reasoningEl.appendChild(summary);
+  
+  const content = document.createElement('div');
+  content.className = 'reasoning-content';
+  
+  // Format the reasoning text, handling potential thinking tags
+  const formattedReasoning = formatReasoning(reasoning);
+  content.innerHTML = formattedReasoning;
+  
+  reasoningEl.appendChild(content);
+  
+  // Insert after the post content
+  const postContent = card.querySelector('.post-content');
+  if (postContent) {
+    postContent.appendChild(reasoningEl);
+  }
+}
+
+// Format AI reasoning for display
+function formatReasoning(reasoning) {
+  // Check if it contains thinking tags
+  if (reasoning.includes('<think>')) {
+    // Extract thinking content
+    const thinkMatch = reasoning.match(/<think>([\s\S]*?)<\/think>/);
+    const answerMatch = reasoning.match(/<\/think>\s*(.+?)$/);
+    
+    let formatted = '';
+    if (thinkMatch && thinkMatch[1]) {
+      formatted += `<div class="thinking-section"><strong>Thinking:</strong><br>${escapeHtml(thinkMatch[1].trim())}</div>`;
+    }
+    if (answerMatch && answerMatch[1]) {
+      formatted += `<div class="answer-section"><strong>Answer:</strong> ${escapeHtml(answerMatch[1].trim())}</div>`;
+    }
+    return formatted || `<div>${escapeHtml(reasoning)}</div>`;
+  } else {
+    // No thinking tags, just display as is
+    return `<div>${escapeHtml(reasoning)}</div>`;
+  }
+}
+
 // Clear context filter
 function clearContextFilter() {
   contextFilter = '';
   contextInput.value = '';
   filterStatus.textContent = '';
   
-  // Remove all filter classes
+  // Remove all filter classes and reasoning
   document.querySelectorAll('.post-card').forEach(card => {
     card.classList.remove('filtering', 'filtered-out', 'relevant');
+    const reasoning = card.querySelector('.ai-reasoning');
+    if (reasoning) {
+      reasoning.remove();
+    }
   });
   
   // Reset title

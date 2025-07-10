@@ -13,9 +13,11 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Get model name from environment or use default
+  // Get configuration from environment or use defaults
   const modelName = process.env.LM_STUDIO_MODEL || 'deepseek/deepseek-r1-0528-qwen3-8b';
   const lmStudioUrl = process.env.LM_STUDIO_URL || 'http://localhost:1234';
+  const requestTimeout = parseInt(process.env.LM_STUDIO_TIMEOUT || '60000'); // Default 60 seconds
+  const batchSize = parseInt(process.env.LM_STUDIO_BATCH_SIZE || '3'); // Default 3 concurrent requests
 
   try {
     const { keyword, context, posts } = req.body;
@@ -25,48 +27,88 @@ module.exports = async (req, res) => {
     }
 
     // Process each post through LM Studio
+    // Process in batches to avoid overwhelming LM Studio
+    const results = [];
     let failedRequests = 0;
-    const results = await Promise.all(posts.map(async (post, index) => {
+    
+    for (let i = 0; i < posts.length; i += batchSize) {
+      const batch = posts.slice(i, i + batchSize);
+      const batchResults = await Promise.all(batch.map(async (post, batchIndex) => {
+        const index = i + batchIndex;
       try {
+        // Clean up HTML entities and limit content length
+        const cleanContent = (post.selftext || 'No text content')
+          .replace(/&amp;/g, '&')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .substring(0, 2000); // Limit to 2000 chars to avoid token limits
+        
         const prompt = `Analyze this Reddit post:
 Title: ${post.title}
-Content: ${post.selftext || 'No text content'}
+Content: ${cleanContent}
 
 Question: Is this post about "${keyword}" specifically in the context of "${context}"?
 
 Reply with only YES or NO.`;
 
-        const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: modelName,
-            messages: [
-              {
-                role: 'system',
-                content: 'You are a content analyzer. Answer questions with only YES or NO. Do not use any XML tags or explain your reasoning.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 500,
-            stream: false
-          })
-        });
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), requestTimeout);
+        
+        let response;
+        try {
+          response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a content analyzer. Answer questions with only YES or NO. Do not use any XML tags or explain your reasoning.'
+                },
+                {
+                  role: 'user',
+                  content: prompt
+                }
+              ],
+              temperature: 0.1,
+              max_tokens: 500,
+              stream: false
+            }),
+            signal: controller.signal
+          });
+        } catch (fetchError) {
+          if (fetchError.name === 'AbortError') {
+            console.error(`Request timeout for post ${index}`);
+            return { index, relevant: true, reasoning: 'Error: Request timed out' };
+          }
+          throw fetchError;
+        } finally {
+          clearTimeout(timeout);
+        }
 
         if (!response.ok) {
           console.error('LM Studio error:', response.status);
           failedRequests++;
-          return { index, relevant: true }; // Default to showing post on error
+          return { index, relevant: true, reasoning: 'Error: Could not analyze this post' }; // Default to showing post on error
         }
 
-        const data = await response.json();
-        const fullResponse = data.choices[0]?.message?.content || '';
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error(`Failed to parse JSON for post ${index}:`, jsonError);
+          failedRequests++;
+          return { index, relevant: true, reasoning: 'Error: Invalid response from LM Studio' };
+        }
+        
+        const fullResponse = data.choices?.[0]?.message?.content || '';
         
         // Log the raw response for debugging
         console.log(`Post ${index} - Raw LLM response: "${fullResponse}"`);
@@ -93,7 +135,7 @@ Reply with only YES or NO.`;
           console.warn(`Ambiguous response for post ${index}: "${fullResponse}"`);
         }
 
-        return { index, relevant: isRelevant };
+        return { index, relevant: isRelevant, reasoning: fullResponse };
       } catch (error) {
         console.error('Error processing post:', error);
         failedRequests++;
@@ -103,12 +145,12 @@ Reply with only YES or NO.`;
           throw error;
         }
         
-        return { index, relevant: true }; // Default to showing post on error
+        return { index, relevant: true, reasoning: 'Error: Could not analyze this post' }; // Default to showing post on error
       }
     }));
-
-    // Don't throw error if we got responses but they were non-OK
-    // Only throw if we couldn't connect at all
+      
+      results.push(...batchResults);
+    }
 
     res.status(200).json({ results });
   } catch (error) {
