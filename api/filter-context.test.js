@@ -4,9 +4,23 @@ const { createMocks } = require('node-mocks-http');
 // Mock fetch globally
 global.fetch = jest.fn();
 
+// Mock console to suppress error logs in tests
+const originalConsoleError = console.error;
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+
 describe('/api/filter-context', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    console.error = jest.fn();
+    console.log = jest.fn();
+    console.warn = jest.fn();
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
+    console.log = originalConsoleLog;
+    console.warn = originalConsoleWarn;
   });
 
   describe('Request validation', () => {

@@ -25,6 +25,7 @@ module.exports = async (req, res) => {
     }
 
     // Process each post through LM Studio
+    let failedRequests = 0;
     const results = await Promise.all(posts.map(async (post, index) => {
       try {
         const prompt = `Analyze this Reddit post:
@@ -60,6 +61,7 @@ Reply with only YES or NO.`;
 
         if (!response.ok) {
           console.error('LM Studio error:', response.status);
+          failedRequests++;
           return { index, relevant: true }; // Default to showing post on error
         }
 
@@ -94,9 +96,19 @@ Reply with only YES or NO.`;
         return { index, relevant: isRelevant };
       } catch (error) {
         console.error('Error processing post:', error);
+        failedRequests++;
+        
+        // If this looks like a connection error, throw to trigger 500 response
+        if (error.message && error.message.includes('Connection refused')) {
+          throw error;
+        }
+        
         return { index, relevant: true }; // Default to showing post on error
       }
     }));
+
+    // Don't throw error if we got responses but they were non-OK
+    // Only throw if we couldn't connect at all
 
     res.status(200).json({ results });
   } catch (error) {
