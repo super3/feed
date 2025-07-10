@@ -303,73 +303,89 @@ async function applyContextFilter() {
   filterStatus.textContent = `Filtering posts about "${currentFilter}" in the context of "${context}"...`;
   
   // Add filtering class to all posts
-  document.querySelectorAll('.post-card').forEach(card => {
+  const postCards = document.querySelectorAll('.post-card');
+  postCards.forEach(card => {
     card.classList.add('filtering');
   });
   
+  // Process posts in chunks for progressive updates
+  const chunkSize = 3; // Process 3 posts at a time
+  let relevantCount = 0;
+  let processedCount = 0;
+  
+  // Update title immediately
+  const postsTitle = document.querySelector('.posts-section h2');
+  if (postsTitle) {
+    postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+  }
+  
   try {
-    // Prepare posts data for API
-    const postsData = posts.map(post => ({
-      title: post.title,
-      selftext: post.selftext || ''
-    }));
-    
-    // Call the context filter API
-    const response = await fetch('/api/filter-context', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        keyword: currentFilter,
-        context: context,
-        posts: postsData
-      })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.hint || error.error || 'Failed to filter posts');
+    // Process posts in chunks
+    for (let i = 0; i < posts.length; i += chunkSize) {
+      const chunk = posts.slice(i, i + chunkSize);
+      const chunkData = chunk.map(post => ({
+        title: post.title,
+        selftext: post.selftext || ''
+      }));
+      
+      // Update progress
+      filterStatus.textContent = `Filtering posts ${i + 1}-${Math.min(i + chunkSize, posts.length)} of ${posts.length}...`;
+      
+      // Call the context filter API for this chunk
+      const response = await fetch('/api/filter-context', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          keyword: currentFilter,
+          context: context,
+          posts: chunkData
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.hint || error.error || 'Failed to filter posts');
+      }
+      
+      const data = await response.json();
+      
+      // Apply filtering results for this chunk
+      data.results.forEach(result => {
+        const actualIndex = i + result.index;
+        const card = postCards[actualIndex];
+        if (card) {
+          // Remove all filter-related classes first
+          card.classList.remove('filtering', 'relevant', 'filtered-out');
+          
+          if (result.relevant) {
+            card.classList.add('relevant');
+            relevantCount++;
+          } else {
+            card.classList.add('filtered-out');
+          }
+          
+          // Add reasoning to the card
+          if (result.reasoning) {
+            addReasoningToCard(card, result.reasoning);
+          }
+        }
+        processedCount++;
+      });
+      
+      // Update status with current progress
+      filterStatus.textContent = `Processed ${processedCount} of ${posts.length} posts - Showing ${relevantCount} relevant posts...`;
     }
     
-    const data = await response.json();
-    const postCards = document.querySelectorAll('.post-card');
-    let relevantCount = 0;
-    
-    // Apply filtering results
-    data.results.forEach(result => {
-      const card = postCards[result.index];
-      if (card) {
-        // Remove all filter-related classes first
-        card.classList.remove('filtering', 'relevant', 'filtered-out');
-        
-        if (result.relevant) {
-          card.classList.add('relevant');
-          relevantCount++;
-        } else {
-          card.classList.add('filtered-out');
-        }
-        
-        // Add reasoning to the card
-        if (result.reasoning) {
-          addReasoningToCard(card, result.reasoning);
-        }
-      }
-    });
-    
-    // Update status
+    // Final status update
     filterStatus.textContent = `Showing ${relevantCount} of ${postCards.length} posts about "${currentFilter}" (${context})`;
     
-    // Update title
-    const postsTitle = document.querySelector('.posts-section h2');
-    if (postsTitle) {
-      postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
-    }
   } catch (error) {
     console.error('Context filtering error:', error);
     
-    // Remove filtering state
-    document.querySelectorAll('.post-card').forEach(card => {
+    // Remove filtering state from remaining posts
+    document.querySelectorAll('.post-card.filtering').forEach(card => {
       card.classList.remove('filtering');
     });
     
@@ -457,6 +473,6 @@ function clearContextFilter() {
   // Reset title
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
-    postsTitle.textContent = `Posts mentioning "${currentFilter}"`;
+    postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
   }
 }
