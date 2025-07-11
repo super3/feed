@@ -119,31 +119,48 @@ Reply with only YES or NO.`;
         // Remove any XML-like tags and extract the actual answer
         const cleanResponse = fullResponse.replace(/<[^>]*>/g, '').trim().toUpperCase();
         
+        // Also look for "Answer: YES/NO" pattern
+        const answerMatch = fullResponse.match(/Answer:\s*(YES|NO)/i);
+        
         // Check if response appears truncated (doesn't end with punctuation or YES/NO)
         const lastChar = fullResponse.trim().slice(-1);
         const appearsTruncated = !['!', '.', '?', 'S', 'O'].includes(lastChar.toUpperCase());
         
         // Look for YES or NO in the response
-        if (cleanResponse.includes('YES')) {
-          isRelevant = true;
-        } else if (cleanResponse.includes('NO')) {
-          isRelevant = false;
+        if (answerMatch) {
+          // If we found "Answer: YES/NO", use that (most reliable)
+          isRelevant = answerMatch[1].toUpperCase() === 'YES';
+          console.log(`Post ${index} - Found answer pattern: ${answerMatch[1]}`);
         } else {
-          // If we can't determine, check if the first word after cleaning is YES or NO
-          const firstWord = cleanResponse.split(/\s+/)[0];
-          if (firstWord === 'YES') {
-            isRelevant = true;
-          } else if (firstWord === 'NO') {
-            isRelevant = false;
-          }
+          // Look for standalone YES or NO at the end of the response or as a single line
+          // This regex looks for YES or NO that appears alone on a line or at the very end
+          const standaloneMatch = fullResponse.match(/(?:^|\n)\s*(YES|NO)\s*(?:\n|$)/i);
           
-          // If response appears truncated, mark as error
-          if (appearsTruncated) {
-            console.warn(`Truncated response for post ${index}: "${fullResponse}"`);
-            return { index, relevant: false, reasoning: fullResponse + '\n\n[Response appears truncated - defaulting to NO]' };
+          if (standaloneMatch) {
+            isRelevant = standaloneMatch[1].toUpperCase() === 'YES';
+            console.log(`Post ${index} - Found standalone answer: ${standaloneMatch[1]}`);
+          } else {
+            // As a last resort, look for the LAST occurrence of YES or NO in the response
+            // This helps when the thinking contains phrases like "I can't say yes" but concludes with NO
+            const allYesNo = [...fullResponse.matchAll(/\b(YES|NO)\b/gi)];
+            
+            if (allYesNo.length > 0) {
+              // Use the LAST occurrence
+              const lastMatch = allYesNo[allYesNo.length - 1][1];
+              isRelevant = lastMatch.toUpperCase() === 'YES';
+              console.log(`Post ${index} - Using last YES/NO found: ${lastMatch}`);
+            } else {
+              // If response appears truncated, mark as error
+              if (appearsTruncated) {
+                console.warn(`Truncated response for post ${index}: "${fullResponse}"`);
+                return { index, relevant: false, reasoning: fullResponse + '\n\n[Response appears truncated - defaulting to NO]' };
+              }
+              
+              console.warn(`Ambiguous response for post ${index}: "${fullResponse}"`);
+              // Default to false if we can't find any YES/NO
+              isRelevant = false;
+            }
           }
-          
-          console.warn(`Ambiguous response for post ${index}: "${fullResponse}"`);
         }
 
         return { index, relevant: isRelevant, reasoning: fullResponse };
