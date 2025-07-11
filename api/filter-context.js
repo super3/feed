@@ -78,7 +78,7 @@ Reply with only YES or NO.`;
                 }
               ],
               temperature: 0.1,
-              max_tokens: 500,
+              max_tokens: 1000,
               stream: false
             }),
             signal: controller.signal
@@ -86,7 +86,7 @@ Reply with only YES or NO.`;
         } catch (fetchError) {
           if (fetchError.name === 'AbortError') {
             console.error(`Request timeout for post ${index}`);
-            return { index, relevant: true, reasoning: 'Error: Request timed out' };
+            return { index, relevant: false, reasoning: 'Error: Request timed out' };
           }
           throw fetchError;
         } finally {
@@ -96,7 +96,7 @@ Reply with only YES or NO.`;
         if (!response.ok) {
           console.error('LM Studio error:', response.status);
           failedRequests++;
-          return { index, relevant: true, reasoning: 'Error: Could not analyze this post' }; // Default to showing post on error
+          return { index, relevant: false, reasoning: 'Error: Could not analyze this post' }; // Default to hiding post on error
         }
 
         let data;
@@ -105,7 +105,7 @@ Reply with only YES or NO.`;
         } catch (jsonError) {
           console.error(`Failed to parse JSON for post ${index}:`, jsonError);
           failedRequests++;
-          return { index, relevant: true, reasoning: 'Error: Invalid response from LM Studio' };
+          return { index, relevant: false, reasoning: 'Error: Invalid response from LM Studio' };
         }
         
         const fullResponse = data.choices?.[0]?.message?.content || '';
@@ -114,10 +114,14 @@ Reply with only YES or NO.`;
         console.log(`Post ${index} - Raw LLM response: "${fullResponse}"`);
         
         // Extract YES or NO from the response, handling potential thinking tags
-        let isRelevant = true; // Default to showing the post
+        let isRelevant = false; // Default to NOT showing the post (more conservative)
         
         // Remove any XML-like tags and extract the actual answer
         const cleanResponse = fullResponse.replace(/<[^>]*>/g, '').trim().toUpperCase();
+        
+        // Check if response appears truncated (doesn't end with punctuation or YES/NO)
+        const lastChar = fullResponse.trim().slice(-1);
+        const appearsTruncated = !['!', '.', '?', 'S', 'O'].includes(lastChar.toUpperCase());
         
         // Look for YES or NO in the response
         if (cleanResponse.includes('YES')) {
@@ -132,6 +136,13 @@ Reply with only YES or NO.`;
           } else if (firstWord === 'NO') {
             isRelevant = false;
           }
+          
+          // If response appears truncated, mark as error
+          if (appearsTruncated) {
+            console.warn(`Truncated response for post ${index}: "${fullResponse}"`);
+            return { index, relevant: false, reasoning: fullResponse + '\n\n[Response appears truncated - defaulting to NO]' };
+          }
+          
           console.warn(`Ambiguous response for post ${index}: "${fullResponse}"`);
         }
 
@@ -145,7 +156,7 @@ Reply with only YES or NO.`;
           throw error;
         }
         
-        return { index, relevant: true, reasoning: 'Error: Could not analyze this post' }; // Default to showing post on error
+        return { index, relevant: false, reasoning: 'Error: Could not analyze this post' }; // Default to hiding post on error
       }
     }));
       

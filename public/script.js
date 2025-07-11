@@ -291,10 +291,10 @@ function toggleFilterPanel() {
 
 // Apply context filter
 async function applyContextFilter() {
-  const context = contextInput.value.trim();
+  let context = contextInput.value.trim();
   if (!context) {
-    alert('Please enter a context description');
-    return;
+    context = 'the note-taking app';
+    contextInput.value = context; // Show the default in the input
   }
   
   contextFilter = context;
@@ -355,6 +355,7 @@ async function applyContextFilter() {
       data.results.forEach(result => {
         const actualIndex = i + result.index;
         const card = postCards[actualIndex];
+        
         if (card) {
           // Remove all filter-related classes first
           card.classList.remove('filtering', 'relevant', 'filtered-out');

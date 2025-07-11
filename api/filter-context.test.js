@@ -122,7 +122,7 @@ describe('/api/filter-context', () => {
       expect(data.model).toBeDefined();
     });
 
-    it('should default to showing posts when LM Studio fails', async () => {
+    it('should default to hiding posts when LM Studio fails', async () => {
       // Mock LM Studio returning non-OK status
       global.fetch.mockResolvedValue({
         ok: false,
@@ -145,8 +145,8 @@ describe('/api/filter-context', () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = JSON.parse(res._getData());
-      // Should default to showing all posts as relevant
-      expect(data.results.every(r => r.relevant)).toBe(true);
+      // Should default to hiding posts (not relevant) on error
+      expect(data.results.every(r => r.relevant)).toBe(false);
     });
   });
 });
