@@ -137,6 +137,17 @@ describe('/api/keywords', () => {
       const data = JSON.parse(res._getData());
       expect(data.error).toBe('Keyword not found');
     });
+
+    it('should return 400 when no keyword parameter provided', async () => {
+      req.query = {};
+      req.body = {};
+
+      await keywordsHandler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      const data = JSON.parse(res._getData());
+      expect(data.error).toBe('Keyword parameter required');
+    });
   });
 
   describe('Unsupported methods', () => {
@@ -149,6 +160,29 @@ describe('/api/keywords', () => {
       expect(res.statusCode).toBe(405);
       const data = JSON.parse(res._getData());
       expect(data.error).toBe('Method not allowed');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle storage errors', async () => {
+      req = httpMocks.createRequest({ method: 'GET' });
+      res = httpMocks.createResponse();
+      
+      // Mock storage to throw an error
+      mockStorage.init.mockRejectedValue(new Error('Storage error'));
+
+      // Mock console.error to verify it's called
+      const originalConsoleError = console.error;
+      console.error = jest.fn();
+
+      await keywordsHandler(req, res);
+
+      expect(console.error).toHaveBeenCalledWith('Error:', expect.any(Error));
+      expect(res.statusCode).toBe(500);
+      const data = JSON.parse(res._getData());
+      expect(data.error).toBe('Storage error');
+
+      console.error = originalConsoleError;
     });
   });
 });
