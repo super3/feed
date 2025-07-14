@@ -329,36 +329,43 @@ async function applyContextFilter() {
     // Get all post IDs
     const postIds = posts.map(p => p.id);
     
-    // Call the simpler filter API with just post IDs
-    const response = await fetch('/api/filter-context-simple', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        keyword: currentFilter,
-        context: context,
-        postIds: postIds
-      })
-    });
+    // Process posts one by one
+    for (let i = 0; i < postIds.length; i++) {
+      const postId = postIds[i];
+      const post = posts.find(p => p.id === postId);
+      const postIndex = posts.findIndex(p => p.id === postId);
+      const card = postCards[postIndex];
       
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.hint || error.error || 'Failed to filter posts');
-    }
-    
-    const data = await response.json();
-    
-    // Apply filtering results
-    data.results.forEach((result, index) => {
-      const card = postCards[index];
-      const post = posts.find(p => p.id === result.id);
+      if (!post || !card) continue;
       
-      if (card && post) {
-        // Remove all filter-related classes first
-        card.classList.remove('filtering', 'relevant', 'filtered-out');
+      try {
+        // Call API for individual post
+        const response = await fetch('/api/filter-context-individual', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            keyword: currentFilter,
+            context: context,
+            postId: postId
+          })
+        });
         
-        if (result.relevant) {
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.hint || error.error || 'Failed to filter post');
+        }
+        
+        const result = await response.json();
+        
+        // Remove filtering class and apply result immediately
+        card.classList.remove('filtering');
+        
+        if (result.error) {
+          // Individual post error - treat as not relevant
+          card.classList.add('filtered-out');
+        } else if (result.relevant) {
           card.classList.add('relevant');
           relevantCount++;
         } else {
@@ -374,14 +381,25 @@ async function applyContextFilter() {
         post.filterContext = context;
         post.isRelevant = result.relevant;
         post.filterReason = result.reasoning;
+        
+        processedCount++;
+        
+        // Update status with progress
+        filterStatus.textContent = `Filtering posts (${processedCount}/${postIds.length})... Found ${relevantCount} relevant`;
+        
+      } catch (error) {
+        console.error(`Error filtering post ${postId}:`, error);
+        // On error, mark as filtered out
+        card.classList.remove('filtering');
+        card.classList.add('filtered-out');
+        processedCount++;
       }
-      processedCount++;
-    });
+    }
     
     // Final status update
     filterStatus.textContent = `Showing ${relevantCount} of ${postCards.length} posts about "${currentFilter}" (${context})`;
     
-    // Reload posts to get the updated filter state from storage
+    // Reload posts to ensure storage is in sync
     setTimeout(() => loadPosts(), 100);
     
   } catch (error) {

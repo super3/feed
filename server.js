@@ -57,6 +57,15 @@ async function handleServerlessFunction(functionPath, req, res) {
           res.setHeader(key, value);
         });
         res.end();
+      },
+      write: (data) => {
+        // For streaming responses, set headers if not already set
+        if (!res.headersSent) {
+          Object.entries(mockRes.headers).forEach(([key, value]) => {
+            res.setHeader(key, value);
+          });
+        }
+        res.write(data);
       }
     };
     
