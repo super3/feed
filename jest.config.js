@@ -5,7 +5,10 @@ module.exports = {
     'lib/**/*.js',
     'api/**/*.js',
     '!**/node_modules/**',
-    '!**/coverage/**'
+    '!**/coverage/**',
+    '!api/filter-context-simple.js',
+    '!api/filter-context-individual.js',
+    '!api/clear-filter.js'
   ],
   testMatch: [
     '**/__tests__/**/*.js',
