@@ -155,7 +155,15 @@ async function loadPosts() {
     const response = await fetch(url);
     const data = await response.json();
     posts = data.posts || [];
-    displayPosts();
+    
+    // Check if any posts have filter information
+    const hasFilteredPosts = posts.some(post => post.filterContext && post.isRelevant !== undefined);
+    
+    if (hasFilteredPosts) {
+      displayPostsWithFilter();
+    } else {
+      displayPosts();
+    }
   } catch (error) {
     console.error('Error loading posts:', error);
     postsContainer.innerHTML = '<p class="error">Failed to load posts</p>';
@@ -308,79 +316,73 @@ async function applyContextFilter() {
     card.classList.add('filtering');
   });
   
-  // Process posts in chunks for progressive updates
-  const chunkSize = 3; // Process 3 posts at a time
-  let relevantCount = 0;
-  let processedCount = 0;
-  
   // Update title immediately
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
     postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
   }
   
+  let relevantCount = 0;
+  let processedCount = 0;
+  
   try {
-    // Process posts in chunks
-    for (let i = 0; i < posts.length; i += chunkSize) {
-      const chunk = posts.slice(i, i + chunkSize);
-      const chunkData = chunk.map(post => ({
-        title: post.title,
-        selftext: post.selftext || ''
-      }));
+    // Get all post IDs
+    const postIds = posts.map(p => p.id);
+    
+    // Call the simpler filter API with just post IDs
+    const response = await fetch('/api/filter-context-simple', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        keyword: currentFilter,
+        context: context,
+        postIds: postIds
+      })
+    });
       
-      // Update progress
-      filterStatus.textContent = `Filtering posts ${i + 1}-${Math.min(i + chunkSize, posts.length)} of ${posts.length}...`;
-      
-      // Call the context filter API for this chunk
-      const response = await fetch('/api/filter-context', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          keyword: currentFilter,
-          context: context,
-          posts: chunkData
-        })
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.hint || error.error || 'Failed to filter posts');
-      }
-      
-      const data = await response.json();
-      
-      // Apply filtering results for this chunk
-      data.results.forEach(result => {
-        const actualIndex = i + result.index;
-        const card = postCards[actualIndex];
-        
-        if (card) {
-          // Remove all filter-related classes first
-          card.classList.remove('filtering', 'relevant', 'filtered-out');
-          
-          if (result.relevant) {
-            card.classList.add('relevant');
-            relevantCount++;
-          } else {
-            card.classList.add('filtered-out');
-          }
-          
-          // Add reasoning to the card
-          if (result.reasoning) {
-            addReasoningToCard(card, result.reasoning);
-          }
-        }
-        processedCount++;
-      });
-      
-      // Update status with current progress
-      filterStatus.textContent = `Processed ${processedCount} of ${posts.length} posts - Showing ${relevantCount} relevant posts...`;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.hint || error.error || 'Failed to filter posts');
     }
+    
+    const data = await response.json();
+    
+    // Apply filtering results
+    data.results.forEach((result, index) => {
+      const card = postCards[index];
+      const post = posts.find(p => p.id === result.id);
+      
+      if (card && post) {
+        // Remove all filter-related classes first
+        card.classList.remove('filtering', 'relevant', 'filtered-out');
+        
+        if (result.relevant) {
+          card.classList.add('relevant');
+          relevantCount++;
+        } else {
+          card.classList.add('filtered-out');
+        }
+        
+        // Add reasoning to the card
+        if (result.reasoning) {
+          addReasoningToCard(card, result.reasoning);
+        }
+        
+        // Update the post object with filter info
+        post.filterContext = context;
+        post.isRelevant = result.relevant;
+        post.filterReason = result.reasoning;
+      }
+      processedCount++;
+    });
     
     // Final status update
     filterStatus.textContent = `Showing ${relevantCount} of ${postCards.length} posts about "${currentFilter}" (${context})`;
+    
+    // Reload posts to get the updated filter state from storage
+    setTimeout(() => loadPosts(), 100);
     
   } catch (error) {
     console.error('Context filtering error:', error);
@@ -457,23 +459,121 @@ function formatReasoning(reasoning) {
 }
 
 // Clear context filter
-function clearContextFilter() {
+async function clearContextFilter() {
   contextFilter = '';
   contextInput.value = '';
-  filterStatus.textContent = '';
+  filterStatus.textContent = 'Clearing filters...';
   
-  // Remove all filter classes and reasoning
-  document.querySelectorAll('.post-card').forEach(card => {
-    card.classList.remove('filtering', 'filtered-out', 'relevant');
-    const reasoning = card.querySelector('.ai-reasoning');
-    if (reasoning) {
-      reasoning.remove();
+  try {
+    // Get all post IDs that have filter info
+    const filteredPostIds = posts.filter(p => p.filterContext).map(p => p.id);
+    
+    if (filteredPostIds.length > 0) {
+      // Call API to clear filter info from posts
+      const response = await fetch('/api/clear-filter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: currentFilter,
+          postIds: filteredPostIds
+        })
+      });
+      
+      if (response.ok) {
+        // Reload posts to get updated state
+        await loadPosts();
+      }
+    } else {
+      // Just refresh the display
+      displayPosts();
     }
-  });
+  } catch (error) {
+    console.error('Error clearing filter:', error);
+    filterStatus.textContent = 'Error clearing filter';
+  }
+}
+
+// Display posts with existing filter applied
+function displayPostsWithFilter() {
+  // Find the most recent filter context
+  const filteredPosts = posts.filter(post => post.filterContext && post.isRelevant !== undefined);
+  if (filteredPosts.length === 0) {
+    displayPosts();
+    return;
+  }
   
-  // Reset title
+  // Get the context from the first filtered post
+  const context = filteredPosts[0].filterContext;
+  contextFilter = context;
+  
+  // Update the section title
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
-    postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
+    postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
   }
+  
+  // Show context filter button
+  contextFilterToggle.style.display = 'inline-flex';
+  
+  // Set the context in the input field
+  contextInput.value = context;
+  
+  // Count relevant posts
+  const relevantCount = posts.filter(post => post.isRelevant === true).length;
+  const totalFiltered = posts.filter(post => post.isRelevant !== undefined).length;
+  
+  // Update filter status
+  filterStatus.textContent = `Showing ${relevantCount} of ${totalFiltered} filtered posts about "${currentFilter}" (${context})`;
+  
+  // Display all posts with appropriate filtering
+  postsContainer.innerHTML = posts.map((post, index) => {
+    const filterClass = post.isRelevant === true ? 'relevant' : 
+                       post.isRelevant === false ? 'filtered-out' : '';
+    
+    return `
+      <div class="post-card ${filterClass}">
+        <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="reddit-link-btn" title="Open in Reddit">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/>
+          </svg>
+        </a>
+        <details class="post-wrapper">
+          <summary class="post-header">
+            <h3 class="post-title">${highlightKeyword(escapeHtml(post.title), currentFilter)}</h3>
+            <div class="post-meta">
+              <span>📍 ${post.subreddit}</span>
+              <span>👤 ${post.author}</span>
+              <span>⬆️ ${post.score}</span>
+              <span>💬 ${post.num_comments}</span>
+              <span>🕒 ${new Date(post.created).toLocaleString()}</span>
+            </div>
+          </summary>
+          <div class="post-content">
+            ${post.selftext ? `<div class="post-selftext">${highlightKeyword(escapeHtml(post.selftext), currentFilter)}</div>` : '<p><em>No text content (link post)</em></p>'}
+            ${post.filterReason ? createReasoningElement(post.filterReason) : ''}
+          </div>
+        </details>
+      </div>
+    `;
+  }).join('');
+  
+  // Add event listeners to prevent button clicks from toggling details
+  document.querySelectorAll('.reddit-link-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  });
+}
+
+// Create reasoning element HTML
+function createReasoningElement(reasoning) {
+  const formattedReasoning = formatReasoning(reasoning);
+  return `
+    <details class="ai-reasoning">
+      <summary>🤖 AI Reasoning</summary>
+      <div class="reasoning-content">
+        ${formattedReasoning}
+      </div>
+    </details>
+  `;
 }

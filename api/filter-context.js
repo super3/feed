@@ -1,3 +1,5 @@
+const { getStorage } = require('../lib/storage');
+
 module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,11 +21,69 @@ module.exports = async (req, res) => {
   const requestTimeout = parseInt(process.env.LM_STUDIO_TIMEOUT || '60000'); // Default 60 seconds
   const batchSize = parseInt(process.env.LM_STUDIO_BATCH_SIZE || '3'); // Default 3 concurrent requests
 
+  // Initialize variables in outer scope
+  let storage;
+  let sessionKey;
+  
   try {
-    const { keyword, context, posts } = req.body;
+    const { keyword, context, posts, sessionId: providedSessionId, isFirstChunk, isLastChunk, totalPosts } = req.body;
 
     if (!keyword || !context || !posts || !Array.isArray(posts)) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Initialize storage
+    storage = getStorage();
+    await storage.init();
+    
+    // Use provided session ID or create a new one
+    const sessionId = providedSessionId || new Date().toISOString();
+    sessionKey = `filtered:${keyword}:${context}:${sessionId}`;
+    
+    let sessionData;
+    
+    if (isFirstChunk || !providedSessionId) {
+      // Initialize new session data
+      sessionData = {
+        keyword,
+        context,
+        sessionId,
+        status: 'in_progress',
+        stats: {
+          totalPosts: totalPosts || posts.length,
+          processed: 0,
+          relevantCount: 0,
+          notRelevantCount: 0
+        },
+        posts: {
+          relevant: [],
+          notRelevant: []
+        }
+      };
+      await storage.set(sessionKey, sessionData);
+    } else {
+      // Get existing session data
+      sessionData = await storage.get(sessionKey);
+      if (!sessionData) {
+        // Session doesn't exist, create it
+        sessionData = {
+          keyword,
+          context,
+          sessionId,
+          status: 'in_progress',
+          stats: {
+            totalPosts: totalPosts || posts.length,
+            processed: 0,
+            relevantCount: 0,
+            notRelevantCount: 0
+          },
+          posts: {
+            relevant: [],
+            notRelevant: []
+          }
+        };
+        await storage.set(sessionKey, sessionData);
+      }
     }
 
     // Process each post through LM Studio
@@ -177,12 +237,62 @@ Reply with only YES or NO.`;
       }
     }));
       
+      // Update storage after each batch
+      for (const result of batchResults) {
+        const post = posts[result.index];
+        const postWithReason = { ...post, filterReason: result.reasoning };
+        
+        // Read current session data
+        const currentData = await storage.get(sessionKey);
+        
+        // Update based on result
+        if (result.relevant) {
+          currentData.posts.relevant.push(postWithReason);
+          currentData.stats.relevantCount++;
+        } else {
+          currentData.posts.notRelevant.push(postWithReason);
+          currentData.stats.notRelevantCount++;
+        }
+        
+        currentData.stats.processed++;
+        
+        // Save updated data
+        await storage.set(sessionKey, currentData);
+      }
+      
       results.push(...batchResults);
     }
 
-    res.status(200).json({ results });
+    // Only mark session as completed if this is the last chunk
+    const finalData = await storage.get(sessionKey);
+    if (isLastChunk) {
+      finalData.status = 'completed';
+      await storage.set(sessionKey, finalData);
+    }
+
+    res.status(200).json({ 
+      results,
+      sessionId,
+      sessionKey,
+      stats: finalData.stats
+    });
   } catch (error) {
     console.error('Filter context error:', error);
+    
+    // Try to mark session as failed if possible
+    if (sessionKey && storage) {
+      try {
+        const data = await storage.get(sessionKey);
+        if (data) {
+          data.status = 'failed';
+          data.error = error.message;
+          await storage.set(sessionKey, data);
+        }
+      } catch (updateError) {
+        console.error('Failed to update session status:', updateError);
+      }
+    }
+    
     res.status(500).json({ 
       error: 'Failed to filter posts', 
       details: error.message,
