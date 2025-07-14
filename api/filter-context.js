@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
 Title: ${post.title}
 Content: ${cleanContent}
 
-Question: Is this post about "${keyword}" specifically in the context of "${context}"?
+Question: Does this post mention or discuss "${keyword}" in the context of "${context}"?
 
 Reply with only YES or NO.`;
 
