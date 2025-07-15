@@ -310,10 +310,13 @@ async function applyContextFilter() {
   // Update filter status
   filterStatus.textContent = `Filtering posts about "${currentFilter}" in the context of "${context}"...`;
   
-  // Add filtering class to all posts
+  // Add filtering class only to unfiltered posts (not already relevant or filtered-out)
   const postCards = document.querySelectorAll('.post-card');
   postCards.forEach(card => {
-    card.classList.add('filtering');
+    // Only add filtering class if the post hasn't been filtered yet
+    if (!card.classList.contains('relevant') && !card.classList.contains('filtered-out')) {
+      card.classList.add('filtering');
+    }
   });
   
   // Update title immediately
@@ -324,6 +327,7 @@ async function applyContextFilter() {
   
   let relevantCount = 0;
   let processedCount = 0;
+  let skippedCount = 0;
   
   try {
     // Get all post IDs
@@ -337,6 +341,13 @@ async function applyContextFilter() {
       const card = postCards[postIndex];
       
       if (!post || !card) continue;
+      
+      // Skip if already filtered (has filterContext and isRelevant is set)
+      if (post.filterContext && post.isRelevant !== undefined) {
+        skippedCount++;
+        if (post.isRelevant) relevantCount++;
+        continue;
+      }
       
       try {
         // Call API for individual post
@@ -397,7 +408,8 @@ async function applyContextFilter() {
     }
     
     // Final status update
-    filterStatus.textContent = `Showing ${relevantCount} of ${postCards.length} posts about "${currentFilter}" (${context})`;
+    const totalFiltered = processedCount + skippedCount;
+    filterStatus.textContent = `Showing ${relevantCount} of ${totalFiltered} filtered posts about "${currentFilter}" (${context})${skippedCount > 0 ? ` (${skippedCount} previously filtered)` : ''}`;
     
     // Reload posts to ensure storage is in sync
     setTimeout(() => loadPosts(), 100);
