@@ -11,20 +11,32 @@
   <div class="container">
     <header>
       <h1>Reddit Feed</h1>
-      <button id="fetch-btn" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 32 32" style="margin-right: 6px; vertical-align: text-bottom;">
-          <circle cx="13" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/>
-          <path d="M18.5 18.5 L26 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        Fetch
-      </button>
+      <div class="header-buttons">
+        <button id="fetch-btn" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 32 32" style="margin-right: 6px; vertical-align: text-bottom;">
+            <circle cx="13" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M18.5 18.5 L26 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          Fetch
+        </button>
+        <button id="filter-by-context-btn" class="btn btn-filter" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+          </svg>
+          Filter
+        </button>
+      </div>
     </header>
 
     <section class="keywords-section">
       <h2>Keywords</h2>
       <div class="keywords-container">
         <div class="keyword-input">
-          <input type="text" id="keyword-input" placeholder="Add a keyword">
+          <input type="text" id="keyword-input" placeholder="Keyword">
+          <div class="context-input-container">
+            <label for="context-input">Context:</label>
+            <input type="text" id="context-input" placeholder="e.g., 'the note-taking app'" />
+          </div>
           <button id="add-keyword-btn" class="btn btn-secondary">Add</button>
         </div>
         <div id="keywords-list" class="keywords-list"></div>
@@ -34,20 +46,7 @@
     <section class="posts-section">
       <div class="posts-header">
         <h2>Posts</h2>
-        <button id="context-filter-toggle" class="btn btn-filter" style="display: none;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
-          </svg>
-          Filter by Context
-        </button>
-      </div>
-      <div id="context-filter-panel" class="context-filter-panel" style="display: none;">
-        <div class="filter-content">
-          <input type="text" id="context-input" placeholder="Describe the context (e.g., 'the note-taking app')" />
-          <button id="apply-filter-btn" class="btn btn-primary">Apply Filter</button>
-          <button id="clear-filter-btn" class="btn btn-secondary">Clear</button>
-        </div>
-        <div id="filter-status" class="filter-status"></div>
+        <button id="clear-filter-btn" class="btn btn-grey" style="display: none;">Clear Filter</button>
       </div>
       <div id="posts-container" class="posts-container">
         <p class="loading">Loading posts...</p>

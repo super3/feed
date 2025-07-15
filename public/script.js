@@ -10,12 +10,9 @@ const addKeywordBtn = document.getElementById('add-keyword-btn');
 const keywordsList = document.getElementById('keywords-list');
 const fetchBtn = document.getElementById('fetch-btn');
 const postsContainer = document.getElementById('posts-container');
-const contextFilterToggle = document.getElementById('context-filter-toggle');
-const contextFilterPanel = document.getElementById('context-filter-panel');
+const filterByContextBtn = document.getElementById('filter-by-context-btn');
 const contextInput = document.getElementById('context-input');
-const applyFilterBtn = document.getElementById('apply-filter-btn');
 const clearFilterBtn = document.getElementById('clear-filter-btn');
-const filterStatus = document.getElementById('filter-status');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -45,11 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchBtn.addEventListener('click', fetchNewPosts);
   
   // Context filter event listeners
-  contextFilterToggle.addEventListener('click', toggleFilterPanel);
-  applyFilterBtn.addEventListener('click', applyContextFilter);
+  filterByContextBtn.addEventListener('click', filterByContext);
   clearFilterBtn.addEventListener('click', clearContextFilter);
   contextInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') applyContextFilter();
+    if (e.key === 'Enter') filterByContext();
   });
 });
 
@@ -122,7 +118,7 @@ function updateKeywordsDisplay() {
   
   // Add "All" tag at the beginning
   keywordsList.innerHTML = `
-    <div class="keyword-tag ${currentFilter === '' ? 'active' : ''}" onclick="filterByKeyword('')" style="cursor: pointer;">
+    <div class="keyword-tag keyword-tag-all ${currentFilter === '' ? 'active' : ''}" onclick="filterByKeyword('')" style="cursor: pointer;">
       All
     </div>
   ` + keywordsList.innerHTML;
@@ -178,12 +174,20 @@ function displayPosts() {
     postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
   }
   
-  // Show/hide context filter button based on whether we have a keyword filter
+  // Show/hide filter buttons based on whether we have a keyword filter
   if (currentFilter) {
-    contextFilterToggle.style.display = 'inline-flex';
+    // Count unfiltered posts
+    const unfilteredCount = posts.filter(post => !post.filterContext || post.isRelevant === undefined).length;
+    filterByContextBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+      </svg>
+      Filter${unfilteredCount > 0 ? ` (${unfilteredCount})` : ''}
+    `;
+    filterByContextBtn.style.display = 'inline-flex';
   } else {
-    contextFilterToggle.style.display = 'none';
-    contextFilterPanel.style.display = 'none';
+    filterByContextBtn.style.display = 'none';
+    clearFilterBtn.style.display = 'none';
   }
   
   if (posts.length === 0) {
@@ -288,13 +292,9 @@ function updateURL() {
   window.history.pushState({}, '', url);
 }
 
-// Toggle filter panel visibility
-function toggleFilterPanel() {
-  const isVisible = contextFilterPanel.style.display !== 'none';
-  contextFilterPanel.style.display = isVisible ? 'none' : 'block';
-  if (!isVisible) {
-    contextInput.focus();
-  }
+// Direct filter by context (no panel needed)
+function filterByContext() {
+  applyContextFilter();
 }
 
 // Apply context filter
@@ -307,8 +307,7 @@ async function applyContextFilter() {
   
   contextFilter = context;
   
-  // Update filter status
-  filterStatus.textContent = `Filtering posts about "${currentFilter}" in the context of "${context}"...`;
+  // Filter status box removed - no longer needed
   
   // Add filtering class only to unfiltered posts (not already relevant or filtered-out)
   const postCards = document.querySelectorAll('.post-card');
@@ -319,10 +318,14 @@ async function applyContextFilter() {
     }
   });
   
-  // Update title immediately
+  // Update title immediately (will be updated with count later)
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
-    postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+    if (currentFilter) {
+      postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+    } else {
+      postsTitle.textContent = `Posts about (${context})`;
+    }
   }
   
   let relevantCount = 0;
@@ -395,8 +398,14 @@ async function applyContextFilter() {
         
         processedCount++;
         
-        // Update status with progress
-        filterStatus.textContent = `Filtering posts (${processedCount}/${postIds.length})... Found ${relevantCount} relevant`;
+        // Update button count dynamically
+        const remainingUnfiltered = posts.filter(post => !post.filterContext || post.isRelevant === undefined).length;
+        filterByContextBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+          </svg>
+          Filter${remainingUnfiltered > 0 ? ` (${remainingUnfiltered})` : ''}
+        `;
         
       } catch (error) {
         console.error(`Error filtering post ${postId}:`, error);
@@ -407,9 +416,21 @@ async function applyContextFilter() {
       }
     }
     
-    // Final status update
+    // Final status update - update the title instead
     const totalFiltered = processedCount + skippedCount;
-    filterStatus.textContent = `Showing ${relevantCount} of ${totalFiltered} filtered posts about "${currentFilter}" (${context})${skippedCount > 0 ? ` (${skippedCount} previously filtered)` : ''}`;
+    const postsTitle = document.querySelector('.posts-section h2');
+    if (postsTitle) {
+      if (currentFilter) {
+        postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+      } else {
+        postsTitle.textContent = `Posts about (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+      }
+    }
+    
+    // Filter status box removed - no longer needed
+    
+    // Show clear button
+    clearFilterBtn.style.display = 'inline-flex';
     
     // Reload posts to ensure storage is in sync
     setTimeout(() => loadPosts(), 100);
@@ -421,9 +442,6 @@ async function applyContextFilter() {
     document.querySelectorAll('.post-card.filtering').forEach(card => {
       card.classList.remove('filtering');
     });
-    
-    // Show error to user
-    filterStatus.textContent = `Error: ${error.message}`;
     
     // If it's likely LM Studio is not running, provide helpful message
     if (error.message.includes('LM Studio')) {
@@ -492,7 +510,6 @@ function formatReasoning(reasoning) {
 async function clearContextFilter() {
   contextFilter = '';
   contextInput.value = '';
-  filterStatus.textContent = 'Clearing filters...';
   
   try {
     // Get all post IDs that have filter info
@@ -510,16 +527,20 @@ async function clearContextFilter() {
       });
       
       if (response.ok) {
+        // Hide clear button
+        clearFilterBtn.style.display = 'none';
         // Reload posts to get updated state
         await loadPosts();
       }
     } else {
+      // Hide clear button
+      clearFilterBtn.style.display = 'none';
       // Just refresh the display
       displayPosts();
     }
   } catch (error) {
     console.error('Error clearing filter:', error);
-    filterStatus.textContent = 'Error clearing filter';
+    alert('Error clearing filter');
   }
 }
 
@@ -536,24 +557,36 @@ function displayPostsWithFilter() {
   const context = filteredPosts[0].filterContext;
   contextFilter = context;
   
-  // Update the section title
-  const postsTitle = document.querySelector('.posts-section h2');
-  if (postsTitle) {
-    postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
-  }
-  
-  // Show context filter button
-  contextFilterToggle.style.display = 'inline-flex';
-  
-  // Set the context in the input field
-  contextInput.value = context;
-  
   // Count relevant posts
   const relevantCount = posts.filter(post => post.isRelevant === true).length;
   const totalFiltered = posts.filter(post => post.isRelevant !== undefined).length;
   
-  // Update filter status
-  filterStatus.textContent = `Showing ${relevantCount} of ${totalFiltered} filtered posts about "${currentFilter}" (${context})`;
+  // Update the section title with count
+  const postsTitle = document.querySelector('.posts-section h2');
+  if (postsTitle) {
+    if (currentFilter) {
+      postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+    } else {
+      postsTitle.textContent = `Posts about (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+    }
+  }
+  
+  // Show filter buttons
+  // Count unfiltered posts
+  const unfilteredCount = posts.filter(post => !post.filterContext || post.isRelevant === undefined).length;
+  filterByContextBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+    </svg>
+    Filter${unfilteredCount > 0 ? ` (${unfilteredCount})` : ''}
+  `;
+  filterByContextBtn.style.display = 'inline-flex';
+  clearFilterBtn.style.display = 'inline-flex';
+  
+  // Set the context in the input field
+  contextInput.value = context;
+  
+  // Filter status box already removed from HTML
   
   // Display all posts with appropriate filtering
   postsContainer.innerHTML = posts.map((post, index) => {
