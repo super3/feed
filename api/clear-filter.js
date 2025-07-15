@@ -1,15 +1,20 @@
 const { getStorage } = require('../lib/storage');
+const { methodNotAllowed, badRequest, serverError } = require('../lib/utils/error-handler');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return methodNotAllowed(res, ['POST']);
   }
 
   try {
     const { keyword, postIds } = req.body;
 
     if (!keyword || !postIds || !Array.isArray(postIds)) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      const missing = [];
+      if (!keyword) missing.push('keyword');
+      if (!postIds) missing.push('postIds');
+      if (postIds && !Array.isArray(postIds)) missing.push('postIds (must be array)');
+      return badRequest(res, missing);
     }
 
     const storage = getStorage();
@@ -53,7 +58,6 @@ module.exports = async (req, res) => {
       keyword
     });
   } catch (error) {
-    console.error('Clear filter error:', error);
-    res.status(500).json({ error: error.message });
+    serverError(res, error, { context: 'Failed to clear filter' });
   }
 };

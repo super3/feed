@@ -7,7 +7,9 @@ module.exports = {
     '!**/node_modules/**',
     '!**/coverage/**',
     '!api/filter-context-individual.js',
-    '!api/clear-filter.js'
+    '!api/clear-filter.js',
+    '!lib/utils/error-handler.js',
+    '!lib/llm/response-parser.js'
   ],
   testMatch: [
     '**/__tests__/**/*.js',

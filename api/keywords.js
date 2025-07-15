@@ -1,4 +1,5 @@
 const { getStorage } = require('../lib/storage');
+const { methodNotAllowed, badRequest, serverError } = require('../lib/utils/error-handler');
 
 const KEYWORDS_KEY = 'config:keywords';
 
@@ -18,7 +19,7 @@ module.exports = async (req, res) => {
         const { keyword } = req.body;
         
         if (!keyword || typeof keyword !== 'string') {
-          return res.status(400).json({ error: 'Invalid keyword' });
+          return badRequest(res, 'keyword (must be a string)');
         }
         
         const currentKeywords = await storage.get(KEYWORDS_KEY) || [];
@@ -40,7 +41,7 @@ module.exports = async (req, res) => {
         const keywordToDelete = req.query.keyword || req.body.keyword;
         
         if (!keywordToDelete) {
-          return res.status(400).json({ error: 'Keyword parameter required' });
+          return badRequest(res, 'keyword');
         }
         
         const existingKeywords = await storage.get(KEYWORDS_KEY) || [];
@@ -58,10 +59,9 @@ module.exports = async (req, res) => {
         });
         
       default:
-        return res.status(405).json({ error: 'Method not allowed' });
+        return methodNotAllowed(res, ['GET', 'POST', 'DELETE']);
     }
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    serverError(res, error, { context: 'Keywords API error' });
   }
 };

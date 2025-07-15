@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
+const { serverError } = require('./lib/utils/error-handler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,7 +73,7 @@ async function handleServerlessFunction(functionPath, req, res) {
     await handler(mockReq, mockRes);
   } catch (error) {
     console.error(`Error in ${functionPath}:`, error);
-    res.status(500).json({ error: error.message });
+    serverError(res, error, { context: 'API route error' });
   }
 }
 
@@ -88,7 +89,7 @@ app.all('/api/*', async (req, res) => {
     if (error.code === 'ENOENT') {
       res.status(404).json({ error: 'Function not found' });
     } else {
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, error, { context: 'Server startup error' });
     }
   }
 });

@@ -91,7 +91,8 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(400);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Invalid keyword');
+      expect(data.error).toBe('Missing required fields');
+      expect(data.missing).toEqual(['keyword (must be a string)']);
     });
   });
 
@@ -146,7 +147,8 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(400);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Keyword parameter required');
+      expect(data.error).toBe('Missing required fields');
+      expect(data.missing).toEqual(['keyword']);
     });
   });
 
@@ -177,10 +179,11 @@ describe('/api/keywords', () => {
 
       await keywordsHandler(req, res);
 
-      expect(console.error).toHaveBeenCalledWith('Error:', expect.any(Error));
+      expect(console.error).toHaveBeenCalledWith('Keywords API error', expect.any(Error));
       expect(res.statusCode).toBe(500);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Storage error');
+      expect(data.error).toBe('Keywords API error');
+      expect(data.message).toBe('Storage error');
 
       console.error = originalConsoleError;
     });

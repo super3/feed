@@ -2,54 +2,60 @@
 
 ## Phase 1: Remove Unused Code
 
-### High Priority
+### High Priority  
 - [x] Delete `/api/filter-context.js` (not used by frontend)
 - [x] Delete `/api/filter-context-simple.js` (not used by frontend)
 - [x] Remove their exclusions from `jest.config.js`
 - [x] Delete `/reddit.js` (duplicates functionality, not imported anywhere)
 - [x] Remove `cleanResponse` variable in `/api/filter-context-individual.js` (line 124)
 - [x] Delete `/api/filter-context.test.js` (test file for removed API)
+- [x] Update test assertions to match new error response format
 
 ## Phase 2: Extract Common Utilities
 
-### High Priority
-- [ ] Create `/lib/llm/response-parser.js`
-  - Extract YES/NO parsing logic (~90 lines of duplicate code)
+### High Priority (Actual Duplication)
+- [x] Create `/lib/utils/error-handler.js` (~16 lines duplicated across 6+ files)
+  - Method not allowed pattern (in 5 files)
+  - 500 error with error.message pattern (in 6 files)
+  - 400 error for missing fields pattern (in 3 files)
+  - Generic error responses (in 3 files)
+
+### Medium Priority (Code Organization)
+- [x] Create `/lib/llm/response-parser.js`
+  - Extract YES/NO parsing logic (~90 lines in filter-context-individual.js)
   - Handle truncated responses
   - Parse "Answer: YES/NO" patterns
+  - Note: Was duplicated in 3 files before Phase 1, extracting would improve maintainability
 
-### Medium Priority
-- [ ] Create `/lib/middleware/cors.js`
-  - Extract CORS headers setup
-  - Handle OPTIONS preflight requests
-  - Apply to all API endpoints
-
-- [ ] Create `/lib/utils/html-cleaner.js`
-  - Extract HTML entity cleaning logic
-  - Add configurable length limit
-
-- [ ] Create `/lib/llm/client.js`
-  - LM Studio configuration
-  - Request timeout handling
-  - Error handling with retry logic
-
-- [ ] Create `/lib/utils/error-handler.js`
-  - Standardized error responses
-  - LM Studio-specific error messages
-  - Logging integration
+### Items Moved to Phase 3 (Not Duplicated)
+The following items are not actually duplicated, moved to Phase 3 for optional refactoring:
+- CORS middleware (only in filter-context-individual.js)
+- HTML cleaner (only in filter-context-individual.js)
+- LLM client (only in filter-context-individual.js)
 
 ## Phase 3: Refactor Remaining Code
 
+### High Priority
+- [x] Update all API files to use error-handler utility
+  - `/api/posts.js`
+  - `/api/fetch-reddit.js`
+  - `/api/clear-filter.js`
+  - `/api/keywords.js`
+  - `/api/filter-context-individual.js`
+  - `/server.js`
+
 ### Medium Priority
-- [ ] Update `/api/filter-context-individual.js` to use extracted utilities
-  - Use new CORS middleware
-  - Use HTML cleaner utility
-  - Use LLM client and response parser
-  - Use error handler utility
-  - Remove console.log statements (lines 118, 137, 145, 155)
+- [x] Update `/api/filter-context-individual.js` to use extracted utilities
+  - Use response parser utility
+  - Console.log statements moved to response parser (kept for debugging)
+
+- [ ] Create optional utilities for code organization:
+  - CORS middleware (for filter-context-individual.js)
+  - HTML cleaner utility (for filter-context-individual.js)
+  - LLM client (for filter-context-individual.js)
 
 - [ ] Create storage middleware or base handler
-  - Reduce storage initialization boilerplate
+  - Reduce storage initialization boilerplate (used in 7 files)
   - Handle storage errors consistently
 
 ### Low Priority
@@ -62,10 +68,9 @@
 
 ### Medium Priority
 - [ ] Add comprehensive tests for new utilities
-  - Test response-parser.js
-  - Test html-cleaner.js
-  - Test error-handler.js
-  - Test CORS middleware
+  - Test `/lib/llm/response-parser.js`
+  - Test `/lib/utils/error-handler.js`
+- [ ] Remove temporary test coverage exclusions from `jest.config.js`
 
 - [ ] Add tests for `/api/filter-context-individual.js`
 - [ ] Remove test coverage exclusions from `jest.config.js`
@@ -95,24 +100,28 @@
   - Implement connection pooling
   - Add caching for frequently accessed data
 
-## Current Code Duplication Issues
+## Current Code Duplication Issues (Updated After Phase 1)
 
-### Duplicate Code Blocks
-1. **CORS Setup** - Duplicated in 3 files
-2. **HTML Entity Cleaning** - Duplicated in 3 files  
-3. **LLM Prompt Construction** - Duplicated in 3 files
-4. **YES/NO Response Parsing** - ~90 lines duplicated in 3 files
-5. **LM Studio Configuration** - Duplicated in 3 files
-6. **Storage Initialization** - Duplicated in 7 files
-7. **Error Response Pattern** - Duplicated across multiple files
+### Actual Duplicate Code Still Present
+1. **Error Response Patterns** - ~16 lines duplicated across 6+ files
+2. **Storage Initialization** - Duplicated in 7 files (minimal but widespread)
 
-### Unused Code
-- `/api/filter-context.js` - Entire file unused
-- `/api/filter-context-simple.js` - Entire file unused
-- `/reddit.js` - Entire file unused
-- `cleanResponse` variable - Defined but never used
-- `failedRequests` variable - Incremented but never used
+### Code Organization Opportunities (Not Duplicated)
+1. **CORS Setup** - Only in filter-context-individual.js
+2. **HTML Entity Cleaning** - Only in filter-context-individual.js
+3. **LLM Configuration & Request** - Only in filter-context-individual.js
+4. **YES/NO Response Parsing** - ~90 lines in filter-context-individual.js (was duplicated before Phase 1)
+
+### Completed in Phase 1
+- ✅ Deleted `/api/filter-context.js` (unused)
+- ✅ Deleted `/api/filter-context-simple.js` (unused)
+- ✅ Deleted `/reddit.js` (unused)
+- ✅ Removed `cleanResponse` variable
+- ✅ Deleted associated test file
+
+### Still TODO
 - Multiple TODO comments in `/lib/storage.js` for unimplemented Vercel KV
+- `/lib/utils/error-handler.js` and `/lib/llm/response-parser.js` excluded from coverage (need tests)
 
 ## Implementation Notes
 

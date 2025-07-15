@@ -1,8 +1,9 @@
 const { getStorage } = require('../lib/storage');
+const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return methodNotAllowed(res, ['GET']);
   }
 
   try {
@@ -54,7 +55,6 @@ module.exports = async (req, res) => {
       posts: uniquePosts
     });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    serverError(res, error, { context: 'Failed to fetch posts' });
   }
 };

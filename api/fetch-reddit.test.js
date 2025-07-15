@@ -193,6 +193,7 @@ describe('/api/fetch-reddit', () => {
 
     expect(res.statusCode).toBe(500);
     const data = JSON.parse(res._getData());
-    expect(data.error).toBe('Storage init failed');
+    expect(data.error).toBe('Failed to fetch Reddit posts');
+    expect(data.message).toBe('Storage init failed');
   });
 });

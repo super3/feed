@@ -1,4 +1,6 @@
 const { getStorage } = require('../lib/storage');
+const { methodNotAllowed, badRequest, serverError, genericError } = require('../lib/utils/error-handler');
+const { parseYesNoResponse, cleanHtmlEntities, buildAnalysisPrompt } = require('../lib/llm/response-parser');
 
 module.exports = async (req, res) => {
   // Enable CORS
@@ -12,7 +14,7 @@ module.exports = async (req, res) => {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return methodNotAllowed(res, ['POST', 'OPTIONS']);
   }
 
   // Get configuration from environment or use defaults
@@ -24,7 +26,11 @@ module.exports = async (req, res) => {
     const { keyword, context, postId } = req.body;
 
     if (!keyword || !context || !postId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      const missing = [];
+      if (!keyword) missing.push('keyword');
+      if (!context) missing.push('context');
+      if (!postId) missing.push('postId');
+      return badRequest(res, missing);
     }
 
     // Initialize storage
@@ -50,22 +56,9 @@ module.exports = async (req, res) => {
       
       try {
         // Clean up HTML entities and limit content length
-        const cleanContent = (post.selftext || 'No text content')
-          .replace(/&amp;/g, '&')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .substring(0, 2000); // Limit to 2000 chars
+        const cleanContent = cleanHtmlEntities(post.selftext);
         
-        const prompt = `Analyze this Reddit post:
-Title: ${post.title}
-Content: ${cleanContent}
-
-Question: Does this post mention or discuss "${keyword}" in the context of "${context}"?
-
-Reply with only YES or NO.`;
+        const prompt = buildAnalysisPrompt(post.title, cleanContent, keyword, context);
 
         // Add timeout to prevent hanging
         const controller = new AbortController();
@@ -114,62 +107,15 @@ Reply with only YES or NO.`;
         const aiResponse = await response.json();
         const fullResponse = aiResponse.choices?.[0]?.message?.content || '';
         
-        // Log the raw response for debugging
-        console.log(`Post ${postId} - Raw LLM response: "${fullResponse}"`);
-        
-        // Extract YES or NO from the response, handling potential thinking tags
-        let isRelevant = false; // Default to NOT showing the post (more conservative)
-        
-        // Also look for "Answer: YES/NO" pattern
-        const answerMatch = fullResponse.match(/Answer:\s*(YES|NO)/i);
-        
-        // Check if response appears truncated (doesn't end with punctuation or YES/NO)
-        const lastChar = fullResponse.trim().slice(-1);
-        const appearsTruncated = !['!', '.', '?', 'S', 'O'].includes(lastChar.toUpperCase());
-        
-        // Look for YES or NO in the response
-        if (answerMatch) {
-          // If we found "Answer: YES/NO", use that (most reliable)
-          isRelevant = answerMatch[1].toUpperCase() === 'YES';
-          console.log(`Post ${postId} - Found answer pattern: ${answerMatch[1]}`);
-        } else {
-          // Look for standalone YES or NO at the end of the response or as a single line
-          // This regex looks for YES or NO that appears alone on a line or at the very end
-          const standaloneMatch = fullResponse.match(/(?:^|\n)\s*(YES|NO)\s*(?:\n|$)/i);
-          
-          if (standaloneMatch) {
-            isRelevant = standaloneMatch[1].toUpperCase() === 'YES';
-            console.log(`Post ${postId} - Found standalone answer: ${standaloneMatch[1]}`);
-          } else {
-            // As a last resort, look for the LAST occurrence of YES or NO in the response
-            // This helps when the thinking contains phrases like "I can't say yes" but concludes with NO
-            const allYesNo = [...fullResponse.matchAll(/\b(YES|NO)\b/gi)];
-            
-            if (allYesNo.length > 0) {
-              // Use the LAST occurrence
-              const lastMatch = allYesNo[allYesNo.length - 1][1];
-              isRelevant = lastMatch.toUpperCase() === 'YES';
-              console.log(`Post ${postId} - Using last YES/NO found: ${lastMatch}`);
-            } else {
-              // If response appears truncated, mark as error
-              if (appearsTruncated) {
-                console.warn(`Truncated response for post ${postId}: "${fullResponse}"`);
-                // Don't modify the reasoning, just use default false
-              }
-              
-              console.warn(`Ambiguous response for post ${postId}: "${fullResponse}"`);
-              // Default to false if we can't find any YES/NO
-              isRelevant = false;
-            }
-          }
-        }
+        // Parse the YES/NO response
+        const { isRelevant, reasoning } = parseYesNoResponse(fullResponse, postId);
         
         // Update the post with filter information
         data.posts[postIndex] = {
           ...post,
           filterContext: context,
           isRelevant: isRelevant,
-          filterReason: fullResponse,
+          filterReason: reasoning,
           filteredAt: new Date().toISOString()
         };
         
@@ -179,7 +125,7 @@ Reply with only YES or NO.`;
         result = {
           id: post.id,
           relevant: isRelevant,
-          reasoning: fullResponse
+          reasoning: reasoning
         };
         
       } catch (error) {
@@ -191,17 +137,15 @@ Reply with only YES or NO.`;
     }
 
     if (!postFound) {
-      return res.status(404).json({ error: 'Post not found' });
+      return genericError(res, 404, 'Post not found');
     }
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Filter context individual error:', error);
-    res.status(500).json({ 
-      error: 'Failed to filter post', 
-      details: error.message,
+    serverError(res, error, { 
+      context: 'Failed to filter post',
       hint: `Make sure LM Studio is running on ${lmStudioUrl}`,
-      model: modelName
+      details: { model: modelName }
     });
   }
 };

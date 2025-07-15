@@ -1,4 +1,5 @@
 const { getStorage } = require('../lib/storage');
+const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
 
 const CONFIG = {
   searchUrl: 'https://www.reddit.com/search/.json',
@@ -65,7 +66,7 @@ async function fetchRedditPosts(keyword, storage) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return methodNotAllowed(res, ['GET', 'POST']);
   }
 
   try {
@@ -106,7 +107,6 @@ module.exports = async (req, res) => {
       results: results
     });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    serverError(res, error, { context: 'Failed to fetch Reddit posts' });
   }
 };
