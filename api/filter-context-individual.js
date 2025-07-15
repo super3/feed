@@ -120,9 +120,6 @@ Reply with only YES or NO.`;
         // Extract YES or NO from the response, handling potential thinking tags
         let isRelevant = false; // Default to NOT showing the post (more conservative)
         
-        // Remove any XML-like tags and extract the actual answer
-        const cleanResponse = fullResponse.replace(/<[^>]*>/g, '').trim().toUpperCase();
-        
         // Also look for "Answer: YES/NO" pattern
         const answerMatch = fullResponse.match(/Answer:\s*(YES|NO)/i);
         
