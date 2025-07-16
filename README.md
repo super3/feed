@@ -1,97 +1,72 @@
-# Reddit Feed
+<h1 align="center">
+  Reddit Feed
+  <br>
+</h1>
 
-[![Run Tests](https://github.com/super3/feed/actions/workflows/test.yml/badge.svg)](https://github.com/super3/feed/actions/workflows/test.yml)
+<h4 align="center">A modern Reddit post aggregator with AI-powered content filtering built with <a href="https://nodejs.org">Node.js</a>, <a href="https://expressjs.com">Express</a>, and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a>.</h4>
 
-Fetches and tracks Reddit posts by keyword, preventing duplicates and saving results to JSON.
+<div align="center">
 
-## Setup
+[![Test Status](https://img.shields.io/github/actions/workflow/status/super3/feed/test.yml?label=tests)](https://github.com/super3/feed/actions/workflows/test.yml)
+[![Coverage Status](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/super3/feed)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?label=license)](https://github.com/super3/feed/blob/main/LICENSE)
 
-Requires Node.js 22+
+</div>
 
+## Quick Start
 ```bash
-npm install
+git clone https://github.com/super3/feed.git && cd feed
+npm install && npm test
+npm run dev
 ```
 
-## Usage
+Open `http://localhost:3000` in your browser to start using Reddit Feed.
 
+## 🚀 Features
+
+- **Keyword Tracking**: Monitor multiple keywords across Reddit with contextual descriptions
+- **Smart Filtering**: AI-powered relevance filtering using LM Studio integration
+- **Real-time Updates**: Fetch new posts from the last hour with duplicate detection
+- **Clean UI**: Responsive design with expandable post details and visual indicators
+- **Progressive Filtering**: Watch as AI analyzes each post in real-time
+
+## 🔧 Configuration
+
+### LM Studio Setup
+
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Load a compatible model (e.g., Llama, Mistral, DeepSeek)
+3. Start the local server on `http://localhost:1234`
+4. The app will automatically connect when filtering
+
+### Environment Variables
 ```bash
-# Default search (keyword: "slack")
-npm start
-
-# Custom keyword
-node reddit.js "javascript"
+PORT=3000                           # Server port (default: 3000)
+LM_STUDIO_URL="http://localhost:1234"  # LM Studio server URL
+LM_STUDIO_MODEL="your-model-name"      # Optional: Specify model
+LM_STUDIO_TIMEOUT="60000"              # Request timeout in ms
+LM_STUDIO_BATCH_SIZE="3"               # Concurrent filter requests
 ```
 
-## Output
-
-- **reddit-data.json** - Tracks fetched post IDs to prevent duplicates
-- **reddit-output.json** - Full post details (title, URL, subreddit, score, etc.)
-
-Console shows real-time results with formatted post information.
-
-## How It Works
-
-1. Searches Reddit for posts from the last hour matching your keyword
-2. Filters out previously fetched posts
-3. Saves new posts to JSON files
-4. Displays results in console
-
-Uses Reddit's public JSON API (no auth required). Be mindful of rate limits.
-
-## Web Interface
-
-The app includes a web interface for managing keywords and viewing posts:
-
-```bash
-npm run dev  # Start development server
+## 📁 Project Structure
+```
+feed/
+├── api/           # API endpoints
+├── lib/           # Shared utilities
+├── public/        # Frontend assets
+├── data/          # Local storage (git-ignored)
+└── server.js      # Express server
 ```
 
-Then open http://localhost:3000 in your browser.
+## 🧪 Testing
 
-## Testing
-
+Run the test suite:
 ```bash
-npm test     # Run all tests
-npm run test:coverage  # Run tests with coverage report
+npm test                # Run all tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # Generate coverage report
 ```
 
-## AI Context Filtering
+## 📝 License
 
-The app supports AI-powered context filtering using a local LM Studio server. This allows you to filter posts based on contextual relevance.
-
-### Setup
-
-1. Install and run [LM Studio](https://lmstudio.ai/)
-2. Load a model (tested with `deepseek/deepseek-r1-0528-qwen3-8b`)
-3. Start the LM Studio server (default: http://localhost:1234)
-
-### Configuration
-
-You can configure the LM Studio connection using environment variables:
-
-```bash
-# Optional: Specify a different model
-export LM_STUDIO_MODEL="your-model-name"
-
-# Optional: Specify a different LM Studio URL
-export LM_STUDIO_URL="http://localhost:8080"
-
-# Optional: Specify request timeout in milliseconds (default: 60000)
-export LM_STUDIO_TIMEOUT="120000"  # 2 minutes
-
-# Optional: Specify batch size for concurrent requests (default: 3)
-export LM_STUDIO_BATCH_SIZE="2"  # Process 2 posts at a time
-```
-
-### Usage
-
-1. Filter posts by a keyword (e.g., "obsidian")
-2. Click "Filter by Context" button
-3. Enter context (e.g., "the note-taking app")
-4. Click "Apply Filter"
-
-The AI will analyze each post and determine if it matches your specific context.
-
-### Note on DeepSeek Models
-
-DeepSeek models may include thinking tags in their responses. The filter API automatically handles these and extracts the YES/NO answer.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
