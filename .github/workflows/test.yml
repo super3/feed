@@ -1,49 +1,42 @@
 name: Run Tests
 
 on:
+  # Runs on pushes targeting any branch
   push:
-    branches: [ main ]
+    branches: [ "main" ]
+
+  # Runs on pull requests targeting main
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        node-version: [22.x]
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run tests
-      run: npm test
-    
-    - name: Run tests with coverage
-      run: npm run test:coverage
-    
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: coverage/
-        retention-days: 7
-    
-    - name: Display coverage summary
-      run: |
-        echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| File | Statements | Branches | Functions | Lines |" >> $GITHUB_STEP_SUMMARY
-        echo "|------|------------|----------|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-        npx jest --coverage --coverageReporters="text-summary" | tail -n +2 | head -n -1 >> $GITHUB_STEP_SUMMARY
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./coverage/lcov.info

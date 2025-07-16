@@ -1,17 +1,10 @@
-<h1 align="center">
-  Reddit Feed
-  <br>
-</h1>
+# Reddit Feed
 
-<h4 align="center">A modern Reddit post aggregator with AI-powered content filtering built with <a href="https://nodejs.org">Node.js</a>, <a href="https://expressjs.com">Express</a>, and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">JavaScript</a>.</h4>
-
-<div align="center">
+A modern Reddit post aggregator with AI-powered content filtering built with [Node.js](https://nodejs.org), [Express](https://expressjs.com), and [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript).
 
 [![Test Status](https://img.shields.io/github/actions/workflow/status/super3/feed/test.yml?label=tests)](https://github.com/super3/feed/actions/workflows/test.yml)
-[![Coverage Status](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/super3/feed)
+[![Coverage Status](https://coveralls.io/repos/github/super3/feed/badge.svg?branch=main)](https://coveralls.io/github/super3/feed?branch=main)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?label=license)](https://github.com/super3/feed/blob/main/LICENSE)
-
-</div>
 
 ## Quick Start
 ```bash
