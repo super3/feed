@@ -57,6 +57,19 @@ async function loadKeywords() {
     keywords = data.keywords || [];
     updateKeywordsDisplay();
     updateFilterOptions();
+    
+    // Update the title now that we have keyword context information
+    const postsTitle = document.querySelector('.posts-section h2');
+    if (postsTitle && currentFilter) {
+      const keywordObj = keywords.find(k => 
+        (typeof k === 'string' ? k : k.keyword) === currentFilter
+      );
+      const context = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
+      
+      postsTitle.textContent = context 
+        ? `Posts mentioning "${currentFilter}" (${context})`
+        : `Posts mentioning "${currentFilter}"`;
+    }
   } catch (error) {
     console.error('Error loading keywords:', error);
   }
@@ -65,18 +78,24 @@ async function loadKeywords() {
 // Add new keyword
 async function addKeyword() {
   const keyword = keywordInput.value.trim();
+  const context = contextInput.value.trim();
   if (!keyword) return;
   
   try {
     const response = await fetch('/api/keywords', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword })
+      body: JSON.stringify({ keyword, context })
     });
     
     if (response.ok) {
       keywordInput.value = '';
+      contextInput.value = '';
       await loadKeywords();
+      // If the new keyword becomes the current filter, reload posts to update the title
+      if (currentFilter === keyword) {
+        await loadPosts();
+      }
     } else {
       const error = await response.json();
       alert(error.error || 'Failed to add keyword');
@@ -109,12 +128,19 @@ async function deleteKeyword(keyword) {
 
 // Update keywords display
 function updateKeywordsDisplay() {
-  keywordsList.innerHTML = keywords.map(keyword => `
-    <div class="keyword-tag ${currentFilter === keyword ? 'active' : ''}" onclick="filterByKeyword('${keyword}')" style="cursor: pointer;">
-      ${keyword}
-      <button class="btn btn-danger" onclick="event.stopPropagation(); deleteKeyword('${keyword}')">×</button>
-    </div>
-  `).join('');
+  keywordsList.innerHTML = keywords.map(k => {
+    const keywordText = typeof k === 'string' ? k : k.keyword;
+    const keywordContext = typeof k === 'object' ? k.context : null;
+    return `
+      <div class="keyword-tag ${currentFilter === keywordText ? 'active' : ''}" 
+           onclick="filterByKeyword('${keywordText}')" 
+           style="cursor: pointer;"
+           data-context="${keywordContext || ''}">
+        ${keywordText}
+        <button class="btn btn-danger" onclick="event.stopPropagation(); deleteKeyword('${keywordText}')">×</button>
+      </div>
+    `;
+  }).join('');
   
   // Add "All" tag at the beginning
   keywordsList.innerHTML = `
@@ -171,7 +197,19 @@ function displayPosts() {
   // Update the section title based on current filter
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
-    postsTitle.textContent = currentFilter ? `Posts mentioning "${currentFilter}"` : 'All posts';
+    if (currentFilter) {
+      // Find the keyword object to get its context
+      const keywordObj = keywords.find(k => 
+        (typeof k === 'string' ? k : k.keyword) === currentFilter
+      );
+      const context = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
+      
+      postsTitle.textContent = context 
+        ? `Posts mentioning "${currentFilter}" (${context})`
+        : `Posts mentioning "${currentFilter}"`;
+    } else {
+      postsTitle.textContent = 'All posts';
+    }
   }
   
   // Show/hide filter buttons based on whether we have a keyword filter
@@ -322,9 +360,20 @@ async function applyContextFilter() {
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
     if (currentFilter) {
-      postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+      // Find the keyword object to get its stored context
+      const keywordObj = keywords.find(k => 
+        (typeof k === 'string' ? k : k.keyword) === currentFilter
+      );
+      const storedContext = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
+      
+      // Only show filter context if it's different from stored context
+      if (storedContext && storedContext !== context) {
+        postsTitle.textContent = `Posts about ${currentFilter} (${storedContext}) - filtering by "${context}"`;
+      } else {
+        postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
+      }
     } else {
-      postsTitle.textContent = `Posts about (${context})`;
+      postsTitle.textContent = `Posts - filtering by "${context}"`;
     }
   }
   
@@ -421,9 +470,20 @@ async function applyContextFilter() {
     const postsTitle = document.querySelector('.posts-section h2');
     if (postsTitle) {
       if (currentFilter) {
-        postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+        // Find the keyword object to get its stored context
+        const keywordObj = keywords.find(k => 
+          (typeof k === 'string' ? k : k.keyword) === currentFilter
+        );
+        const storedContext = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
+        
+        // Only show filter context if it's different from stored context
+        if (storedContext && storedContext !== context) {
+          postsTitle.textContent = `Posts about ${currentFilter} (${storedContext}) - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
+        } else {
+          postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+        }
       } else {
-        postsTitle.textContent = `Posts about (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+        postsTitle.textContent = `Posts - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
       }
     }
     
@@ -565,9 +625,20 @@ function displayPostsWithFilter() {
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
     if (currentFilter) {
-      postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+      // Find the keyword object to get its stored context
+      const keywordObj = keywords.find(k => 
+        (typeof k === 'string' ? k : k.keyword) === currentFilter
+      );
+      const storedContext = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
+      
+      // Only show filter context if it's different from stored context
+      if (storedContext && storedContext !== context) {
+        postsTitle.textContent = `Posts about ${currentFilter} (${storedContext}) - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
+      } else {
+        postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+      }
     } else {
-      postsTitle.textContent = `Posts about (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
+      postsTitle.textContent = `Posts - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
     }
   }
   

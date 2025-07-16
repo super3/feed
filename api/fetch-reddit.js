@@ -85,7 +85,10 @@ module.exports = async (req, res) => {
     const results = {};
     
     // Fetch posts for each keyword
-    for (const keyword of keywords) {
+    for (const keywordItem of keywords) {
+      // Handle both string and object formats
+      const keyword = typeof keywordItem === 'string' ? keywordItem : keywordItem.keyword;
+      
       try {
         const posts = await fetchRedditPosts(keyword, storage);
         results[keyword] = {

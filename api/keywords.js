@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
         
       case 'POST':
         // Add a new keyword
-        const { keyword } = req.body;
+        const { keyword, context } = req.body;
         
         if (!keyword || typeof keyword !== 'string') {
           return badRequest(res, 'keyword (must be a string)');
@@ -24,11 +24,22 @@ module.exports = async (req, res) => {
         
         const currentKeywords = await storage.get(KEYWORDS_KEY) || [];
         
-        if (currentKeywords.includes(keyword.toLowerCase())) {
+        // Check if keyword already exists (comparing just the keyword text)
+        const exists = currentKeywords.some(k => 
+          (typeof k === 'string' ? k : k.keyword) === keyword.toLowerCase()
+        );
+        
+        if (exists) {
           return res.status(409).json({ error: 'Keyword already exists' });
         }
         
-        currentKeywords.push(keyword.toLowerCase());
+        // Store as object with keyword and context
+        const keywordObj = {
+          keyword: keyword.toLowerCase(),
+          context: context || null
+        };
+        
+        currentKeywords.push(keywordObj);
         await storage.set(KEYWORDS_KEY, currentKeywords);
         
         return res.status(201).json({ 
@@ -45,7 +56,10 @@ module.exports = async (req, res) => {
         }
         
         const existingKeywords = await storage.get(KEYWORDS_KEY) || [];
-        const filteredKeywords = existingKeywords.filter(k => k !== keywordToDelete.toLowerCase());
+        const filteredKeywords = existingKeywords.filter(k => {
+          const keywordText = typeof k === 'string' ? k : k.keyword;
+          return keywordText !== keywordToDelete.toLowerCase();
+        });
         
         if (existingKeywords.length === filteredKeywords.length) {
           return res.status(404).json({ error: 'Keyword not found' });

@@ -67,10 +67,10 @@ describe('/api/keywords', () => {
       expect(res.statusCode).toBe(201);
       expect(mockStorage.set).toHaveBeenCalledWith(
         'config:keywords',
-        ['javascript', 'typescript']
+        ['javascript', { keyword: 'typescript', context: null }]
       );
       const data = JSON.parse(res._getData());
-      expect(data.keywords).toContain('typescript');
+      expect(data.keywords).toEqual(['javascript', { keyword: 'typescript', context: null }]);
     });
 
     it('should reject duplicate keyword', async () => {
