@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs').promises;
 const { serverError } = require('./lib/utils/error-handler');
 
+// Load environment variables
+require('dotenv').config({ path: '.env.development.local' });
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 

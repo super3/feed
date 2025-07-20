@@ -38,12 +38,12 @@
   - [x] Return all posts if no keyword specified
   - [x] Store posts with keyword metadata
 
-### 4. Set Up Storage (Vercel KV)
-- [ ] Enable Vercel KV in Vercel dashboard
-- [x] Install `@vercel/kv` package
-- [ ] Create KV instance
-- [x] Update code to use KV instead of JSON files:
-  - [ ] Store posted IDs in KV set per keyword: `posted:${keyword}:${postId}`
+### 4. Set Up Storage (Redis via Upstash)
+- [ ] Enable Upstash Redis in Vercel dashboard (or other Redis provider)
+- [x] Install `@upstash/redis` package
+- [ ] Create Redis instance
+- [x] Update code to use Redis instead of JSON files:
+  - [ ] Store posted IDs in Redis set per keyword: `posted:${keyword}:${postId}`
   - [ ] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
   - [ ] Store keyword configuration: `config:keywords` (array)
 - [ ] Data structure:
@@ -78,7 +78,7 @@
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
 - [x] Update `package.json`:
-  - [x] Add `@vercel/kv` dependency
+  - [x] Add `@upstash/redis` dependency
   - [x] Add `express` for local development
   - [x] Remove `node-fetch` (native fetch in Node 22)
   - [ ] Update scripts for Vercel (pending)
@@ -129,9 +129,8 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
 
 ### 8. Environment Variables
 - [ ] Set up in Vercel dashboard:
-  - [ ] `KV_URL` - Automatically set by Vercel
-  - [ ] `KV_REST_API_URL` - Automatically set by Vercel
-  - [ ] `KV_REST_API_TOKEN` - Automatically set by Vercel
+  - [ ] `UPSTASH_REDIS_REST_URL` - Redis URL from Upstash
+  - [ ] `UPSTASH_REDIS_REST_TOKEN` - Redis token from Upstash
   - [ ] `QUEUE_TIMEOUT` - Max time for processing (default: 300s)
   - [ ] `WORKER_AUTH_TOKEN` - Optional auth token for worker clients
 
@@ -139,7 +138,7 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
 - [x] Install Jest and testing dependencies:
   - [x] `jest` and `@types/jest`
   - [x] `node-mocks-http` for API testing
-  - [x] `@vercel/kv` mock setup
+  - [x] `@upstash/redis` mock setup
 - [x] Create test files:
   - [x] `/api/fetch-reddit.test.js` - Test Reddit fetching logic
     - [x] Mock fetch calls to Reddit API
@@ -168,7 +167,7 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
 - [ ] Install Vercel CLI: `npm i -g vercel`
 - [ ] Run `vercel dev` to test locally
 - [ ] Test all endpoints
-- [ ] Verify KV storage works
+- [ ] Verify Redis storage works
 - [ ] Run Jest tests: `npm test`
 
 ### 11. Deployment
@@ -233,7 +232,7 @@ README.md
 ```
 
 ## Notes
-- Vercel KV free tier: 3000 requests/day, 256MB storage
+- Upstash Redis free tier: 10,000 requests/day, 256MB storage
 - Cron jobs run in UTC timezone
 - Cron syntax for every 10 minutes: `*/10 * * * *`
 - Serverless functions have 10-second timeout (default)

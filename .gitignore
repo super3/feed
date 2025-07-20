@@ -147,3 +147,7 @@ data/
 
 # OS files
 .DS_Store
+.vercel
+
+# Test files
+test-redis.js
