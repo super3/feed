@@ -151,3 +151,4 @@ data/
 
 # Test files
 test-redis.js
+test-proxymesh.js
