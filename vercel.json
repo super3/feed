@@ -3,10 +3,10 @@
     "api/fetch-reddit.js": {
       "maxDuration": 30
     },
-    "api/filter-context.js": {
+    "api/filter-context-individual.js": {
       "maxDuration": 30
     },
-    "api/filter-context-individual.js": {
+    "api/clear-filter.js": {
       "maxDuration": 30
     }
   },
