@@ -59,7 +59,3 @@ npm test                # Run all tests
 npm run test:watch      # Watch mode
 npm run test:coverage   # Generate coverage report
 ```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
