@@ -116,7 +116,6 @@ async function deleteKeyword(keyword) {
       await loadKeywords();
       if (currentFilter === keyword) {
         currentFilter = '';
-        keywordFilter.value = '';
         updateURL();
         loadPosts();
       }
