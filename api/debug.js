@@ -12,21 +12,31 @@ module.exports = async (req, res) => {
     // Test Reddit API
     let redditTest = { success: false };
     try {
-      const testUrl = 'https://www.reddit.com/search/.json?q=test&type=posts&t=hour';
+      let testUrl = 'https://www.reddit.com/search/.json?q=test&type=posts&t=hour';
+      const isVercel = !!process.env.VERCEL;
+      
+      // Use proxy on Vercel
+      if (isVercel) {
+        const encodedUrl = encodeURIComponent(testUrl);
+        testUrl = `https://api.allorigins.win/raw?url=${encodedUrl}`;
+      }
+      
       const response = await fetch(testUrl, {
-        headers: { 
+        headers: isVercel ? {} : { 
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
       });
       redditTest = {
         success: response.ok,
         status: response.status,
-        statusText: response.statusText
+        statusText: response.statusText,
+        usingProxy: isVercel
       };
     } catch (error) {
       redditTest = {
         success: false,
-        error: error.message
+        error: error.message,
+        usingProxy: !!process.env.VERCEL
       };
     }
     

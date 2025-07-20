@@ -14,13 +14,21 @@ async function fetchRedditPosts(keyword, storage) {
   const postedIds = new Set(await storage.smembers(postedIdsKey));
   
   // Search Reddit
-  const url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
+  let url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
+  
+  // Use a proxy service when running on Vercel to avoid Reddit's IP blocking
+  if (process.env.VERCEL) {
+    // Using AllOrigins proxy service (free and reliable)
+    const encodedUrl = encodeURIComponent(url);
+    url = `https://api.allorigins.win/raw?url=${encodedUrl}`;
+  }
   
   console.log(`Fetching Reddit posts for keyword: ${keyword}`);
   console.log(`Request URL: ${url}`);
+  console.log(`Using proxy: ${!!process.env.VERCEL}`);
   
   const response = await fetch(url, {
-    headers: { 'User-Agent': CONFIG.userAgent }
+    headers: process.env.VERCEL ? {} : { 'User-Agent': CONFIG.userAgent }
   });
 
   if (!response.ok) {
