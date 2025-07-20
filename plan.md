@@ -40,9 +40,9 @@
 
 ### 4. Set Up Storage (Vercel KV)
 - [ ] Enable Vercel KV in Vercel dashboard
-- [ ] Install `@vercel/kv` package
+- [x] Install `@vercel/kv` package
 - [ ] Create KV instance
-- [ ] Update code to use KV instead of JSON files:
+- [x] Update code to use KV instead of JSON files:
   - [ ] Store posted IDs in KV set per keyword: `posted:${keyword}:${postId}`
   - [ ] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
   - [ ] Store keyword configuration: `config:keywords` (array)
@@ -78,7 +78,7 @@
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
 - [x] Update `package.json`:
-  - [ ] Add `@vercel/kv` dependency (pending for step 4)
+  - [x] Add `@vercel/kv` dependency
   - [x] Add `express` for local development
   - [x] Remove `node-fetch` (native fetch in Node 22)
   - [ ] Update scripts for Vercel (pending)
@@ -139,7 +139,7 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
 - [x] Install Jest and testing dependencies:
   - [x] `jest` and `@types/jest`
   - [x] `node-mocks-http` for API testing
-  - [ ] `@vercel/kv` mock setup (pending for when KV is implemented)
+  - [x] `@vercel/kv` mock setup
 - [x] Create test files:
   - [x] `/api/fetch-reddit.test.js` - Test Reddit fetching logic
     - [x] Mock fetch calls to Reddit API
