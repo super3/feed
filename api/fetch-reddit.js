@@ -15,12 +15,17 @@ async function fetchRedditPosts(keyword, storage) {
   
   // Search Reddit
   const url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
+  
+  console.log(`Fetching Reddit posts for keyword: ${keyword}`);
+  console.log(`Request URL: ${url}`);
+  
   const response = await fetch(url, {
     headers: { 'User-Agent': CONFIG.userAgent }
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
+    console.error(`Reddit API error: ${response.status} ${response.statusText}`);
+    throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -70,7 +75,17 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('Fetch Reddit API called');
+    console.log('Environment:', {
+      hasRedisUrl: !!process.env.REDIS_URL,
+      nodeVersion: process.version,
+      platform: process.platform
+    });
+    
     const storage = getStorage();
+    console.log('Storage type:', storage.type);
+    console.log('Redis type:', storage.redisType);
+    
     await storage.init();
     
     // Get keywords from storage or use default
@@ -97,9 +112,11 @@ module.exports = async (req, res) => {
           posts: posts
         };
       } catch (error) {
+        console.error(`Error fetching posts for ${keyword}:`, error);
         results[keyword] = {
           success: false,
-          error: error.message
+          error: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         };
       }
     }
