@@ -8,6 +8,7 @@ module.exports = {
     '!**/coverage/**',
     '!api/filter-context-individual.js',
     '!api/clear-filter.js',
+    '!api/debug.js',
     '!lib/utils/error-handler.js',
     '!lib/llm/response-parser.js'
   ],
