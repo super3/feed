@@ -1,6 +1,5 @@
 const { getStorage } = require('../lib/storage');
 const { methodNotAllowed } = require('../lib/utils/error-handler');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -13,22 +12,20 @@ module.exports = async (req, res) => {
     // Test Reddit API
     let redditTest = { success: false };
     try {
-      const testUrl = 'https://www.reddit.com/search/.json?q=test&type=posts&t=hour';
+      let testUrl = 'https://www.reddit.com/search/.json?q=test&type=posts&t=hour';
       const isVercel = !!process.env.VERCEL;
       
-      let fetchOptions = {
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      };
-      
-      // Use ProxyMesh when running on Vercel
-      if (isVercel && process.env.PROXYMESH_URL) {
-        const proxyAgent = new HttpsProxyAgent(process.env.PROXYMESH_URL);
-        fetchOptions.agent = proxyAgent;
+      // Use proxy on Vercel
+      if (isVercel) {
+        const encodedUrl = encodeURIComponent(testUrl);
+        testUrl = `https://api.allorigins.win/raw?url=${encodedUrl}`;
       }
       
-      const response = await fetch(testUrl, fetchOptions);
+      const response = await fetch(testUrl, {
+        headers: isVercel ? {} : { 
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
       redditTest = {
         success: response.ok,
         status: response.status,

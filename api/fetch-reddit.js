@@ -1,6 +1,5 @@
 const { getStorage } = require('../lib/storage');
 const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
-const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const CONFIG = {
   searchUrl: 'https://www.reddit.com/search/.json',
@@ -17,22 +16,20 @@ async function fetchRedditPosts(keyword, storage) {
   // Search Reddit
   let url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
   
+  // Use a proxy service when running on Vercel to avoid Reddit's IP blocking
+  if (process.env.VERCEL) {
+    // Using AllOrigins proxy service (free and reliable)
+    const encodedUrl = encodeURIComponent(url);
+    url = `https://api.allorigins.win/raw?url=${encodedUrl}`;
+  }
+  
   console.log(`Fetching Reddit posts for keyword: ${keyword}`);
   console.log(`Request URL: ${url}`);
   console.log(`Using proxy: ${!!process.env.VERCEL}`);
   
-  let fetchOptions = {
-    headers: { 'User-Agent': CONFIG.userAgent }
-  };
-  
-  // Use ProxyMesh when running on Vercel
-  if (process.env.VERCEL && process.env.PROXYMESH_URL) {
-    const proxyAgent = new HttpsProxyAgent(process.env.PROXYMESH_URL);
-    fetchOptions.agent = proxyAgent;
-    console.log('Using ProxyMesh proxy');
-  }
-  
-  const response = await fetch(url, fetchOptions);
+  const response = await fetch(url, {
+    headers: process.env.VERCEL ? {} : { 'User-Agent': CONFIG.userAgent }
+  });
 
   if (!response.ok) {
     console.error(`Reddit API error: ${response.status} ${response.statusText}`);
