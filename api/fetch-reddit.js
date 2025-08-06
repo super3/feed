@@ -1,9 +1,11 @@
 const { getStorage } = require('../lib/storage');
 const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const https = require('https');
 
 const CONFIG = {
   searchUrl: 'https://www.reddit.com/search/.json',
-  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 };
 
 async function fetchRedditPosts(keyword, storage) {
@@ -14,29 +16,70 @@ async function fetchRedditPosts(keyword, storage) {
   const postedIds = new Set(await storage.smembers(postedIdsKey));
   
   // Search Reddit
-  let url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
-  
-  // Use a proxy service when running on Vercel to avoid Reddit's IP blocking
-  if (process.env.VERCEL) {
-    // Using AllOrigins proxy service (free and reliable)
-    const encodedUrl = encodeURIComponent(url);
-    url = `https://api.allorigins.win/raw?url=${encodedUrl}`;
-  }
+  const searchPath = `/search/.json?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
   
   console.log(`Fetching Reddit posts for keyword: ${keyword}`);
-  console.log(`Request URL: ${url}`);
-  console.log(`Using proxy: ${!!process.env.VERCEL}`);
   
-  const response = await fetch(url, {
-    headers: process.env.VERCEL ? {} : { 'User-Agent': CONFIG.userAgent }
-  });
-
-  if (!response.ok) {
-    console.error(`Reddit API error: ${response.status} ${response.statusText}`);
-    throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
+  // Use proxy when running on Vercel with proxy credentials
+  let responseData;
+  if (process.env.VERCEL && process.env.PROXY_USER && process.env.PROXY_PASS) {
+    const proxyHost = process.env.PROXY_HOST || '82.26.109.10:5712';
+    const proxyUrl = `http://${process.env.PROXY_USER}:${process.env.PROXY_PASS}@${proxyHost}/`;
+    console.log(`Using proxy: ${proxyHost}`);
+    
+    // Use https module with proxy agent since fetch doesn't properly support proxies
+    responseData = await new Promise((resolve, reject) => {
+      const agent = new HttpsProxyAgent(proxyUrl);
+      const options = {
+        hostname: 'www.reddit.com',
+        port: 443,
+        path: searchPath,
+        method: 'GET',
+        agent: agent,
+        headers: {
+          'User-Agent': CONFIG.userAgent,
+          'Accept': 'application/json'
+        }
+      };
+      
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              resolve({ ok: true, data: JSON.parse(data) });
+            } catch (e) {
+              reject(new Error('Invalid JSON response'));
+            }
+          } else {
+            reject(new Error(`Reddit API error: ${res.statusCode} ${res.statusMessage}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  } else {
+    // Use regular fetch when not using proxy
+    const url = `${CONFIG.searchUrl}?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
+    console.log(`Request URL: ${url}`);
+    const response = await fetch(url, {
+      headers: { 'User-Agent': CONFIG.userAgent }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Reddit API error: ${response.status} ${response.statusText}`);
+    }
+    
+    responseData = { ok: true, data: await response.json() };
   }
 
-  const data = await response.json();
+  if (!responseData.ok) {
+    throw responseData.error || new Error('Reddit API error');
+  }
+
+  const data = responseData.data;
   const newPosts = [];
 
   // Filter out already posted items
