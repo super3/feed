@@ -51,6 +51,7 @@ describe('/api/fetch-reddit', () => {
       init: jest.fn().mockResolvedValue(undefined),
       get: jest.fn(),
       set: jest.fn(),
+      keys: jest.fn(),
       smembers: jest.fn(),
       sadd: jest.fn()
     };
@@ -66,9 +67,11 @@ describe('/api/fetch-reddit', () => {
 
   it('should fetch posts for configured keywords', async () => {
     // Setup mock data
-    mockStorage.get.mockResolvedValue(['javascript', 'react']);
-    mockStorage.smembers.mockResolvedValue([]); // No previous posts
-    mockStorage.sadd.mockResolvedValue(1);
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['javascript', 'react'];
+      return null; // No existing posts
+    });
+    mockStorage.keys.mockResolvedValue([]); // No existing post keys
 
     // Mock Reddit API response
     const mockRedditResponse = {
@@ -107,7 +110,6 @@ describe('/api/fetch-reddit', () => {
     expect(data.results.javascript.posts[0].title).toBe('JavaScript Tips');
     
     // Verify storage calls
-    expect(mockStorage.sadd).toHaveBeenCalledWith('posted:javascript', 'post1');
     expect(mockStorage.set).toHaveBeenCalledWith(
       expect.stringMatching(/^posts:javascript:\d+$/),
       expect.objectContaining({
@@ -120,7 +122,7 @@ describe('/api/fetch-reddit', () => {
 
   it('should use default keyword if none configured', async () => {
     mockStorage.get.mockResolvedValue(null);
-    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.keys.mockResolvedValue([]);
     
     global.fetch.mockResolvedValue({
       ok: true,
@@ -134,9 +136,17 @@ describe('/api/fetch-reddit', () => {
     expect(data.keywords).toEqual(['slack']);
   });
 
-  it('should skip already posted items', async () => {
-    mockStorage.get.mockResolvedValue(['javascript']);
-    mockStorage.smembers.mockResolvedValue(['existing-post-id']); // Already posted
+  it('should skip already existing items', async () => {
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['javascript'];
+      if (key === 'posts:javascript:123') {
+        return {
+          posts: [{ id: 'existing-post-id', title: 'Old Post' }]
+        };
+      }
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue(['posts:javascript:123']); // Existing post key
     
     const mockRedditResponse = {
       data: {
@@ -177,8 +187,11 @@ describe('/api/fetch-reddit', () => {
   });
 
   it('should handle Reddit API errors', async () => {
-    mockStorage.get.mockResolvedValue(['javascript']);
-    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['javascript'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
     
     global.fetch.mockResolvedValue({
       ok: false,
@@ -194,8 +207,11 @@ describe('/api/fetch-reddit', () => {
 
   it('should accept both GET and POST methods', async () => {
     req = httpMocks.createRequest({ method: 'GET' });
-    mockStorage.get.mockResolvedValue(['test']);
-    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
     global.fetch.mockResolvedValue({
       ok: true,
       json: async () => ({ data: { children: [] } })
@@ -238,8 +254,11 @@ describe('/api/fetch-reddit', () => {
     const https = require('https');
     jest.mock('https');
     
-    mockStorage.get.mockResolvedValue(['test']);
-    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
 
     // Since we can't easily test the https module calls, we'll just verify the env vars are set
     await fetchRedditHandler(req, res);
@@ -255,8 +274,11 @@ describe('/api/fetch-reddit', () => {
     // Ensure VERCEL is not set
     delete process.env.VERCEL;
     
-    mockStorage.get.mockResolvedValue(['test']);
-    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
     mockStorage.sadd.mockResolvedValue(1);
 
     const mockRedditResponse = {

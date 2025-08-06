@@ -9,11 +9,18 @@ const CONFIG = {
 };
 
 async function fetchRedditPosts(keyword, storage) {
-  const postedIdsKey = `posted:${keyword}`;
   const postsKey = `posts:${keyword}:${Date.now()}`;
   
-  // Load previously posted IDs
-  const postedIds = new Set(await storage.smembers(postedIdsKey));
+  // Get all existing posts for this keyword to check for duplicates
+  const existingPostKeys = await storage.keys(`posts:${keyword}:*`);
+  const existingPostIds = new Set();
+  
+  for (const key of existingPostKeys) {
+    const data = await storage.get(key);
+    if (data && data.posts) {
+      data.posts.forEach(post => existingPostIds.add(post.id));
+    }
+  }
   
   // Search Reddit
   const searchPath = `/search/.json?q=${encodeURIComponent(keyword)}&type=posts&t=hour`;
@@ -86,12 +93,12 @@ async function fetchRedditPosts(keyword, storage) {
   const data = responseData.data;
   const newPosts = [];
 
-  // Filter out already posted items
+  // Filter out already existing items
   for (const child of data.data.children) {
     const post = child.data;
     
-    if (postedIds.has(post.id)) {
-      continue; // Skip already posted
+    if (existingPostIds.has(post.id)) {
+      continue; // Skip already existing post
     }
 
     const postData = {
@@ -109,7 +116,6 @@ async function fetchRedditPosts(keyword, storage) {
     };
 
     newPosts.push(postData);
-    await storage.sadd(postedIdsKey, post.id);
   }
 
   // Save new posts
