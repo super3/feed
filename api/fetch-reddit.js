@@ -52,6 +52,10 @@ async function fetchRedditPosts(keyword, storage) {
             } catch (e) {
               reject(new Error('Invalid JSON response'));
             }
+          } else if (res.statusCode === 403) {
+            console.error('Reddit blocked proxy request. Status:', res.statusCode);
+            // Return empty data instead of failing completely
+            resolve({ ok: true, data: { data: { children: [] } } });
           } else {
             reject(new Error(`Reddit API error: ${res.statusCode} ${res.statusMessage}`));
           }
