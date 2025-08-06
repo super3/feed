@@ -6,6 +6,7 @@ const KEYWORDS_KEY = 'config:keywords';
 module.exports = async (req, res) => {
   try {
     const storage = getStorage();
+    console.log('Keywords API - Storage type:', storage.type, 'Redis type:', storage.redisType);
     await storage.init();
     
     switch (req.method) {

@@ -13,6 +13,7 @@ async function fetchRedditPosts(keyword, storage) {
   
   // Get all existing posts for this keyword to check for duplicates
   const existingPostKeys = await storage.keys(`posts:${keyword}:*`);
+  console.log(`Checking ${existingPostKeys.length} existing post keys for keyword: ${keyword}`);
   const existingPostIds = new Set();
   
   for (const key of existingPostKeys) {
@@ -27,9 +28,9 @@ async function fetchRedditPosts(keyword, storage) {
   
   console.log(`Fetching Reddit posts for keyword: ${keyword}`);
   
-  // Use proxy when running on Vercel with proxy credentials
+  // Use proxy when proxy credentials are available
   let responseData;
-  if (process.env.VERCEL && process.env.PROXY_USER && process.env.PROXY_PASS) {
+  if (process.env.PROXY_USER && process.env.PROXY_PASS) {
     const proxyHost = process.env.PROXY_HOST || '82.26.109.10:5712';
     const proxyUrl = `http://${process.env.PROXY_USER}:${process.env.PROXY_PASS}@${proxyHost}/`;
     console.log(`Using proxy: ${proxyHost}`);
@@ -120,11 +121,14 @@ async function fetchRedditPosts(keyword, storage) {
 
   // Save new posts
   if (newPosts.length > 0) {
+    console.log(`Saving ${newPosts.length} new posts to key: ${postsKey}`);
     await storage.set(postsKey, {
       timestamp: new Date().toISOString(),
       count: newPosts.length,
       posts: newPosts
     });
+  } else {
+    console.log(`No new posts to save for keyword: ${keyword}`);
   }
 
   return newPosts;
@@ -152,8 +156,10 @@ module.exports = async (req, res) => {
     // Get keywords from storage or use default
     const keywordsKey = 'config:keywords';
     let keywords = await storage.get(keywordsKey);
+    console.log('Retrieved keywords from storage:', keywords);
     
     if (!keywords || keywords.length === 0) {
+      console.log('No keywords found, setting default: slack');
       keywords = ['slack']; // Default keyword
       await storage.set(keywordsKey, keywords);
     }

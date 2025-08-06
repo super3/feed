@@ -8,6 +8,7 @@ module.exports = async (req, res) => {
 
   try {
     const storage = getStorage();
+    console.log('Posts API - Storage type:', storage.type, 'Redis type:', storage.redisType);
     await storage.init();
     
     const { keyword } = req.query;
@@ -16,6 +17,7 @@ module.exports = async (req, res) => {
     if (keyword) {
       // Get posts for specific keyword
       const keys = await storage.keys(`posts:${keyword}:*`);
+      console.log(`Found ${keys.length} post keys for keyword: ${keyword}`);
       
       for (const key of keys) {
         const data = await storage.get(key);
@@ -26,6 +28,7 @@ module.exports = async (req, res) => {
     } else {
       // Get all posts
       const keys = await storage.keys('posts:*');
+      console.log(`Found ${keys.length} total post keys`);
       
       for (const key of keys) {
         const data = await storage.get(key);
