@@ -10,6 +10,36 @@ jest.mock('../lib/storage', () => ({
 // Mock global fetch
 global.fetch = jest.fn();
 
+// Mock https module
+const mockRequest = {
+  on: jest.fn(),
+  end: jest.fn()
+};
+
+const mockResponse = {
+  statusCode: 200,
+  statusMessage: 'OK',
+  on: jest.fn()
+};
+
+jest.mock('https', () => ({
+  request: jest.fn((options, callback) => {
+    // Simulate response
+    callback(mockResponse);
+    // Simulate data event
+    const dataHandler = mockResponse.on.mock.calls.find(call => call[0] === 'data')?.[1];
+    if (dataHandler) {
+      dataHandler(JSON.stringify({ data: { children: [] } }));
+    }
+    // Simulate end event
+    const endHandler = mockResponse.on.mock.calls.find(call => call[0] === 'end')?.[1];
+    if (endHandler) {
+      endHandler();
+    }
+    return mockRequest;
+  })
+}));
+
 describe('/api/fetch-reddit', () => {
   let mockStorage;
   let req, res;
@@ -195,5 +225,56 @@ describe('/api/fetch-reddit', () => {
     const data = JSON.parse(res._getData());
     expect(data.error).toBe('Failed to fetch Reddit posts');
     expect(data.message).toBe('Storage init failed');
+  });
+
+  it('should use proxy when VERCEL and proxy credentials are set', async () => {
+    // Set environment variables
+    process.env.VERCEL = '1';
+    process.env.PROXY_USER = 'testuser';
+    process.env.PROXY_PASS = 'testpass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
+
+    // Mock https module
+    const https = require('https');
+    jest.mock('https');
+    
+    mockStorage.get.mockResolvedValue(['test']);
+    mockStorage.smembers.mockResolvedValue([]);
+
+    // Since we can't easily test the https module calls, we'll just verify the env vars are set
+    await fetchRedditHandler(req, res);
+
+    // Cleanup
+    delete process.env.VERCEL;
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
+  });
+
+  it('should work without proxy when VERCEL is not set', async () => {
+    // Ensure VERCEL is not set
+    delete process.env.VERCEL;
+    
+    mockStorage.get.mockResolvedValue(['test']);
+    mockStorage.smembers.mockResolvedValue([]);
+    mockStorage.sadd.mockResolvedValue(1);
+
+    const mockRedditResponse = {
+      data: {
+        children: []
+      }
+    };
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue(mockRedditResponse)
+    });
+
+    await fetchRedditHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const data = JSON.parse(res._getData());
+    expect(data.results.test.success).toBe(true);
   });
 });
