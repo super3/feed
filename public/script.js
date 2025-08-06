@@ -295,14 +295,27 @@ async function fetchNewPosts() {
     const response = await fetch('/api/fetch-reddit', { method: 'POST' });
     const data = await response.json();
     
-    // Count total new posts
+    // Count total new posts and collect all posts
     let totalNew = 0;
+    let allNewPosts = [];
     Object.values(data.results).forEach(result => {
-      if (result.success) totalNew += result.count;
+      if (result.success) {
+        totalNew += result.count;
+        if (result.posts) {
+          allNewPosts = allNewPosts.concat(result.posts);
+        }
+      }
     });
     
     alert(`Fetched ${totalNew} new posts`);
-    await loadPosts();
+    
+    // On Vercel with ephemeral storage, display posts directly
+    if (allNewPosts.length > 0) {
+      posts = allNewPosts;
+      displayPosts();
+    } else {
+      await loadPosts();
+    }
   } catch (error) {
     console.error('Error fetching posts:', error);
     alert('Failed to fetch new posts');
