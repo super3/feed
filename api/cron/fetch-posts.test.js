@@ -38,15 +38,26 @@ jest.mock('https', () => ({
   })
 }));
 
-const handler = require('./fetch-posts');
-
 // Mock HttpsProxyAgent
 jest.mock('https-proxy-agent', () => ({
   HttpsProxyAgent: jest.fn()
 }));
 
+const handler = require('./fetch-posts');
+
 describe('Cron Fetch Posts API', () => {
   let req, res;
+  let originalEnv;
+  
+  beforeAll(() => {
+    // Save original environment
+    originalEnv = { ...process.env };
+  });
+  
+  afterAll(() => {
+    // Restore original environment
+    process.env = originalEnv;
+  });
   
   beforeEach(() => {
     req = {
@@ -58,18 +69,27 @@ describe('Cron Fetch Posts API', () => {
       json: jest.fn()
     };
     
-    // Clear mock calls but not implementations
+    // Clear all mocks
+    jest.clearAllMocks();
+    
+    // Reset mock storage
     mockStorage.init.mockClear();
     mockStorage.get.mockClear();
     mockStorage.set.mockClear();
     mockStorage.keys.mockClear();
     mockStorage.keys.mockReturnValue([]);
     
+    // Reset all mock implementations to defaults
+    mockStorage.init.mockResolvedValue(undefined);
+    mockStorage.get.mockResolvedValue(null);
+    mockStorage.set.mockResolvedValue('OK');
+    
     // Reset environment variables
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL;
     delete process.env.PROXY_USER;
     delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
     
     // Reset https mock
     const https = require('https');
@@ -95,6 +115,11 @@ describe('Cron Fetch Posts API', () => {
         end: jest.fn()
       };
     });
+  });
+
+  afterEach(() => {
+    // Extra cleanup
+    jest.clearAllMocks();
   });
 
   it('should execute cron job successfully with default keyword', async () => {
@@ -282,6 +307,7 @@ describe('Cron Fetch Posts API', () => {
   it('should use proxy when credentials are available', async () => {
     process.env.PROXY_USER = 'user';
     process.env.PROXY_PASS = 'pass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
     
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
@@ -290,6 +316,7 @@ describe('Cron Fetch Posts API', () => {
       return Promise.resolve(null);
     });
     
+    // The https mock is already set up in beforeEach
     await handler(req, res);
     
     // Verify that the handler succeeded (proxy was used)
@@ -308,6 +335,7 @@ describe('Cron Fetch Posts API', () => {
   it('should handle Reddit API 403 errors from proxy', async () => {
     process.env.PROXY_USER = 'user';
     process.env.PROXY_PASS = 'pass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
     
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
@@ -318,6 +346,7 @@ describe('Cron Fetch Posts API', () => {
     
     // Mock 403 response from proxy
     const https = require('https');
+    https.request.mockClear();
     https.request.mockImplementation((options, callback) => {
       const mockRes = {
         statusCode: 403,
