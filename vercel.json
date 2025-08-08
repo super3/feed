@@ -8,8 +8,17 @@
     },
     "api/clear-filter.js": {
       "maxDuration": 30
+    },
+    "api/cron/fetch-posts.js": {
+      "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/fetch-posts",
+      "schedule": "*/10 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
