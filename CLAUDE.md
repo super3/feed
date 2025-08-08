@@ -6,7 +6,7 @@ Reddit Feed Aggregator that fetches posts by keyword with web interface. Uses Re
 ## Key Technical Details
 - **Storage**: Upstash Redis (REDIS_URL or KV_URL env vars) for Vercel, local file storage for development
 - **Proxy**: ProxyMesh credentials for Reddit API access (PROXY_USER, PROXY_PASS, PROXY_HOST)
-- **Cron Jobs**: Vercel cron configured to fetch posts every 10 minutes automatically
+- **Cron Jobs**: Use external service (e.g., cron-job.org) to call `/api/cron/fetch-posts` or `/api/fetch-reddit`
 
 ## Important Guidelines
 
@@ -72,6 +72,6 @@ Required for Vercel deployment:
 ## Deployment Checklist
 1. Ensure Upstash Redis is configured with proper URLs
 2. Verify proxy credentials are set
-3. Check cron job is registered in vercel.json
-4. Test storage persistence after deployment
-5. Monitor cron job execution in Vercel dashboard
+3. Test storage persistence after deployment
+4. Set up external cron service (cron-job.org) to call endpoints
+5. Configure CRON_SECRET if using authentication for cron endpoint
