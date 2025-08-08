@@ -1,15 +1,16 @@
-const handler = require('./fetch-posts');
+// Create mocks before requiring the handler
+const mockStorage = {
+  type: 'local',
+  redisType: undefined,
+  init: jest.fn(),
+  get: jest.fn(),
+  set: jest.fn(),
+  keys: jest.fn(() => []),
+};
 
-// Mock the storage module
+// Mock the storage module to always return the same instance
 jest.mock('../../lib/storage', () => ({
-  getStorage: jest.fn(() => ({
-    type: 'local',
-    redisType: undefined,
-    init: jest.fn(),
-    get: jest.fn(),
-    set: jest.fn(),
-    keys: jest.fn(() => []),
-  }))
+  getStorage: jest.fn(() => mockStorage)
 }));
 
 // Mock https module for proxy requests
@@ -37,6 +38,8 @@ jest.mock('https', () => ({
   })
 }));
 
+const handler = require('./fetch-posts');
+
 // Mock HttpsProxyAgent
 jest.mock('https-proxy-agent', () => ({
   HttpsProxyAgent: jest.fn()
@@ -55,22 +58,48 @@ describe('Cron Fetch Posts API', () => {
       json: jest.fn()
     };
     
-    // Clear mocks
-    jest.clearAllMocks();
+    // Clear mock calls but not implementations
+    mockStorage.init.mockClear();
+    mockStorage.get.mockClear();
+    mockStorage.set.mockClear();
+    mockStorage.keys.mockClear();
+    mockStorage.keys.mockReturnValue([]);
     
     // Reset environment variables
     delete process.env.CRON_SECRET;
     delete process.env.VERCEL;
     delete process.env.PROXY_USER;
     delete process.env.PROXY_PASS;
+    
+    // Reset https mock
+    const https = require('https');
+    https.request.mockClear();
+    https.request.mockImplementation((options, callback) => {
+      const mockRes = {
+        statusCode: 200,
+        on: jest.fn((event, handler) => {
+          if (event === 'data') {
+            handler(JSON.stringify({
+              data: {
+                children: []
+              }
+            }));
+          } else if (event === 'end') {
+            handler();
+          }
+        })
+      };
+      callback(mockRes);
+      return {
+        on: jest.fn(),
+        end: jest.fn()
+      };
+    });
   });
 
   it('should execute cron job successfully with default keyword', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     // No keywords in storage, should use default
-    mockStorage.get.mockResolvedValueOnce(null);
+    mockStorage.get.mockResolvedValue(null);
     
     // Mock fetch for default keyword
     global.fetch = jest.fn(() => 
@@ -98,9 +127,6 @@ describe('Cron Fetch Posts API', () => {
   });
 
   it('should execute cron job with existing keywords', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     // Mock existing keywords - need to handle multiple get calls
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
@@ -147,9 +173,6 @@ describe('Cron Fetch Posts API', () => {
   });
 
   it('should handle object format keywords', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     // Mock keywords in object format
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
@@ -195,9 +218,7 @@ describe('Cron Fetch Posts API', () => {
     
     req.headers.authorization = 'Bearer test-secret';
     
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    mockStorage.get.mockResolvedValueOnce(['test']);
+    mockStorage.get.mockResolvedValue(['test']);
     
     global.fetch = jest.fn(() => 
       Promise.resolve({
@@ -214,9 +235,6 @@ describe('Cron Fetch Posts API', () => {
   });
 
   it('should handle fetch errors gracefully', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
         return Promise.resolve(['test']);
@@ -254,9 +272,6 @@ describe('Cron Fetch Posts API', () => {
   });
 
   it('should handle storage initialization errors', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     mockStorage.init.mockRejectedValue(new Error('Storage init failed'));
     
     await handler(req, res);
@@ -268,9 +283,6 @@ describe('Cron Fetch Posts API', () => {
     process.env.PROXY_USER = 'user';
     process.env.PROXY_PASS = 'pass';
     
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
         return Promise.resolve(['test']);
@@ -278,20 +290,24 @@ describe('Cron Fetch Posts API', () => {
       return Promise.resolve(null);
     });
     
-    const https = require('https');
-    
     await handler(req, res);
     
-    expect(https.request).toHaveBeenCalled();
+    // Verify that the handler succeeded (proxy was used)
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Cron job executed successfully'
+      })
+    );
+    
+    // The https.request mock should have been called when proxy is used
+    const https = require('https');
+    expect(https.request).toHaveBeenCalled();
   });
 
   it('should handle Reddit API 403 errors from proxy', async () => {
     process.env.PROXY_USER = 'user';
     process.env.PROXY_PASS = 'pass';
-    
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
     
     mockStorage.get.mockImplementation((key) => {
       if (key === 'config:keywords') {
@@ -333,9 +349,6 @@ describe('Cron Fetch Posts API', () => {
   });
 
   it('should filter duplicate posts', async () => {
-    const { getStorage } = require('../../lib/storage');
-    const mockStorage = getStorage();
-    
     // Mock existing posts
     mockStorage.keys.mockResolvedValue(['posts:test:123']);
     mockStorage.get.mockImplementation((key) => {
