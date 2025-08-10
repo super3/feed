@@ -389,7 +389,7 @@ async function applyContextFilter() {
     }
     
     // Queue posts for filtering
-    const response = await fetch('/api/filter-context', {
+    const response = await fetch('/api/filter?action=context', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -455,7 +455,7 @@ async function startQueuePolling() {
 
 async function checkQueueStatus() {
   try {
-    const response = await fetch('/api/filter-queue/status');
+    const response = await fetch('/api/filter?action=queue');
     if (!response.ok) return false;
     
     const data = await response.json();
@@ -484,7 +484,7 @@ async function checkQueueStatus() {
 
 async function updatePostWithResult(postId) {
   try {
-    const response = await fetch(`/api/filter-context?postId=${postId}`);
+    const response = await fetch(`/api/filter?action=context&postId=${postId}`);
     if (!response.ok) return;
     
     const result = await response.json();
@@ -594,7 +594,7 @@ async function clearContextFilter() {
     
     if (filteredPostIds.length > 0) {
       // Call API to clear filter info from posts
-      const response = await fetch('/api/clear-filter', {
+      const response = await fetch('/api/filter?action=clear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
