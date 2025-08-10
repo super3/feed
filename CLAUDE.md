@@ -11,9 +11,9 @@ Reddit Feed Aggregator that fetches posts by keyword with web interface. Uses Re
 ## Important Guidelines
 
 ### Testing
-- Always run tests before committing: `npm test`
+- Always run tests before starting work: `npm test` (understand the current state)
+- Always run tests before committing: `npm test` (verify your changes)
 - Coverage threshold: 78% branches, 80% functions/lines/statements
-- Known issue: Some cron tests fail when run together but pass individually (Jest mock isolation issue)
 
 ### Git Workflow
 - **NEVER commit or push without explicit user permission**
