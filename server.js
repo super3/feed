@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { serverError } = require('./lib/utils/error-handler');
 const config = require('./lib/config');
+const logger = require('./lib/logger');
 
 // Load environment variables
 require('dotenv').config({ path: '.env.development.local' });
@@ -76,7 +77,7 @@ async function handleServerlessFunction(functionPath, req, res) {
     
     await handler(mockReq, mockRes);
   } catch (error) {
-    console.error(`Error in ${functionPath}:`, error);
+    logger.error('Error in API route', { functionPath, error: error.message, stack: error.stack });
     serverError(res, error, { context: 'API route error' });
   }
 }
@@ -104,7 +105,10 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Development server running at http://localhost:${PORT}`);
-  console.log(`📁 Serving static files from /public`);
-  console.log(`⚡ API routes available at /api/*`);
+  logger.info('Development server started', {
+    port: PORT,
+    publicDir: '/public',
+    apiRoutes: '/api/*',
+    url: `http://localhost:${PORT}`
+  });
 });

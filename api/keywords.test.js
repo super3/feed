@@ -1,6 +1,7 @@
 const httpMocks = require('node-mocks-http');
 const keywordsHandler = require('./keywords');
 const { getStorage } = require('../lib/storage');
+const { createMockStorage, KEYWORDS, ERRORS } = require('../test/helpers');
 
 // Mock storage
 jest.mock('../lib/storage', () => ({
@@ -12,11 +13,7 @@ describe('/api/keywords', () => {
   let req, res;
 
   beforeEach(() => {
-    mockStorage = {
-      init: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn(),
-      set: jest.fn()
-    };
+    mockStorage = createMockStorage();
     getStorage.mockReturnValue(mockStorage);
   });
 
@@ -27,15 +24,15 @@ describe('/api/keywords', () => {
     });
 
     it('should return existing keywords', async () => {
-      mockStorage.get.mockResolvedValue(['javascript', 'react', 'nodejs']);
+      mockStorage.get.mockResolvedValue(KEYWORDS.simple);
 
       await keywordsHandler(req, res);
 
       expect(res.statusCode).toBe(200);
       const data = JSON.parse(res._getData());
-      expect(data).toEqual({
-        keywords: ['javascript', 'react', 'nodejs']
-      });
+      expect(data.success).toBe(true);
+      expect(data.data.keywords).toEqual(KEYWORDS.simple);
+      expect(data.meta.count).toBe(KEYWORDS.simple.length);
     });
 
     it('should return empty array if no keywords', async () => {
@@ -45,7 +42,9 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(200);
       const data = JSON.parse(res._getData());
-      expect(data).toEqual({ keywords: [] });
+      expect(data.success).toBe(true);
+      expect(data.data.keywords).toEqual([]);
+      expect(data.meta.count).toBe(0);
     });
   });
 
@@ -70,7 +69,8 @@ describe('/api/keywords', () => {
         ['javascript', { keyword: 'typescript', context: null }]
       );
       const data = JSON.parse(res._getData());
-      expect(data.keywords).toEqual(['javascript', { keyword: 'typescript', context: null }]);
+      expect(data.success).toBe(true);
+      expect(data.data.keywords).toEqual(['javascript', { keyword: 'typescript', context: null }]);
     });
 
     it('should reject duplicate keyword', async () => {
@@ -81,6 +81,7 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(409);
       const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
       expect(data.error).toBe('Keyword already exists');
     });
 
@@ -91,8 +92,9 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(400);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Missing required fields');
-      expect(data.missing).toEqual(['keyword (must be a string)']);
+      expect(data.success).toBe(false);
+      expect(data.error).toBe('Type validation failed');
+      expect(data.details.invalid).toEqual([{ field: 'keyword', expected: 'string', actual: 'number' }]);
     });
   });
 
@@ -136,6 +138,7 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(404);
       const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
       expect(data.error).toBe('Keyword not found');
     });
 
@@ -147,8 +150,9 @@ describe('/api/keywords', () => {
 
       expect(res.statusCode).toBe(400);
       const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
       expect(data.error).toBe('Missing required fields');
-      expect(data.missing).toEqual(['keyword']);
+      expect(data.details.missing).toEqual(['keyword']);
     });
   });
 
@@ -159,9 +163,9 @@ describe('/api/keywords', () => {
 
       await keywordsHandler(req, res);
 
-      expect(res.statusCode).toBe(405);
+      expect(res.statusCode).toBe(ERRORS.method_not_allowed.status);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Method not allowed');
+      expect(data.error).toBe(ERRORS.method_not_allowed.message);
     });
   });
 
@@ -175,19 +179,12 @@ describe('/api/keywords', () => {
       // Mock storage to throw an error
       mockStorage.init.mockRejectedValue(new Error('Storage error'));
 
-      // Mock console.error to verify it's called
-      const originalConsoleError = console.error;
-      console.error = jest.fn();
-
       await keywordsHandler(req, res);
 
-      expect(console.error).toHaveBeenCalledWith('Keywords API error', expect.any(Error));
       expect(res.statusCode).toBe(500);
       const data = JSON.parse(res._getData());
+      expect(data.success).toBe(false);
       expect(data.error).toBe('Keywords API error');
-      expect(data.message).toBe('Storage error');
-
-      console.error = originalConsoleError;
     });
 
     it('should handle POST with mixed format existing keywords', async () => {
@@ -195,13 +192,13 @@ describe('/api/keywords', () => {
       req.body = { keyword: 'react' };
 
       // Mock mixed format keywords (strings and objects) - need to mock get once for the check
-      mockStorage.get.mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }]);
+      mockStorage.get.mockResolvedValueOnce(KEYWORDS.mixed);
 
       await keywordsHandler(req, res);
 
-      expect(res.statusCode).toBe(409);
+      expect(res.statusCode).toBe(ERRORS.keyword_exists.status);
       const data = JSON.parse(res._getData());
-      expect(data.error).toBe('Keyword already exists');
+      expect(data.error).toBe(ERRORS.keyword_exists.message);
     });
 
     it('should add keyword when storage has mixed format keywords', async () => {
@@ -210,8 +207,8 @@ describe('/api/keywords', () => {
 
       // Mock mixed format keywords - need to mock get twice (once for check, once for update)
       mockStorage.get
-        .mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }])
-        .mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }]);
+        .mockResolvedValueOnce(KEYWORDS.mixed)
+        .mockResolvedValueOnce(KEYWORDS.mixed);
       mockStorage.set.mockResolvedValue('OK');
 
       await keywordsHandler(req, res);
@@ -219,7 +216,7 @@ describe('/api/keywords', () => {
       expect(res.statusCode).toBe(201);
       expect(mockStorage.set).toHaveBeenCalledWith(
         'config:keywords',
-        ['javascript', { keyword: 'react', context: 'frontend' }, { keyword: 'vue', context: null }]
+        ['javascript', { keyword: 'react', context: 'frontend' }, 'nodejs', { keyword: 'vue', context: null }]
       );
     });
 

@@ -1,5 +1,5 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, serverError } = require('../lib/utils/error-handler');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
 module.exports = async (req, res) => {
@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
       };
     }
     
-    res.status(200).json({
+    return success(res, {
       environment: {
         nodeVersion: process.version,
         platform: process.platform,
@@ -81,14 +81,14 @@ module.exports = async (req, res) => {
         vercelRegion: process.env.VERCEL_REGION || 'unknown'
       },
       storage: storageTest,
-      reddit: redditTest,
-      timestamp: new Date().toISOString()
+      reddit: redditTest
+    }, {
+      meta: { timestamp: new Date().toISOString() }
     });
   } catch (error) {
-    res.status(500).json({
-      error: 'Debug endpoint error',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    return serverError(res, error, { 
+      context: 'Debug endpoint error',
+      details: { endpoint: 'debug' }
     });
   }
 };

@@ -1,28 +1,34 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed, badRequest, serverError } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, badRequest, serverError, conflict, notFound, validation } = require('../lib/utils/error-handler');
+const logger = require('../lib/logger');
 
 const KEYWORDS_KEY = 'config:keywords';
 
 module.exports = async (req, res) => {
   try {
     const storage = getStorage();
-    console.log('Keywords API - Storage type:', storage.type, 'Redis type:', storage.redisType);
+    logger.debug('Keywords API initialized', { storageType: storage.type, redisType: storage.redisType });
     await storage.init();
     
     switch (req.method) {
       case 'GET':
         // Get all keywords
         const keywords = await storage.get(KEYWORDS_KEY) || [];
-        return res.status(200).json({ keywords });
+        return success(res, { keywords }, {
+          meta: { 
+            count: keywords.length,
+            timestamp: new Date().toISOString()
+          }
+        });
         
       case 'POST':
         // Add a new keyword
-        const { keyword, context } = req.body;
-        
-        if (!keyword || typeof keyword !== 'string') {
-          return badRequest(res, 'keyword (must be a string)');
+        const validationError = validation.validate(req.body, ['keyword'], { keyword: 'string' });
+        if (validationError) {
+          return badRequest(res, validationError);
         }
         
+        const { keyword, context } = req.body;
         const currentKeywords = await storage.get(KEYWORDS_KEY) || [];
         
         // Check if keyword already exists (comparing just the keyword text)
@@ -31,7 +37,7 @@ module.exports = async (req, res) => {
         );
         
         if (exists) {
-          return res.status(409).json({ error: 'Keyword already exists' });
+          return conflict(res, 'Keyword already exists');
         }
         
         // Store as object with keyword and context
@@ -43,9 +49,16 @@ module.exports = async (req, res) => {
         currentKeywords.push(keywordObj);
         await storage.set(KEYWORDS_KEY, currentKeywords);
         
-        return res.status(201).json({ 
-          message: 'Keyword added successfully',
+        return success(res, { 
+          keyword: keywordObj,
           keywords: currentKeywords 
+        }, {
+          status: 201,
+          message: 'Keyword added successfully',
+          meta: { 
+            count: currentKeywords.length,
+            timestamp: new Date().toISOString()
+          }
         });
         
       case 'DELETE':
@@ -53,7 +66,7 @@ module.exports = async (req, res) => {
         const keywordToDelete = req.query.keyword || req.body.keyword;
         
         if (!keywordToDelete) {
-          return badRequest(res, 'keyword');
+          return badRequest(res, ['keyword']);
         }
         
         const existingKeywords = await storage.get(KEYWORDS_KEY) || [];
@@ -63,14 +76,20 @@ module.exports = async (req, res) => {
         });
         
         if (existingKeywords.length === filteredKeywords.length) {
-          return res.status(404).json({ error: 'Keyword not found' });
+          return notFound(res, 'Keyword not found');
         }
         
         await storage.set(KEYWORDS_KEY, filteredKeywords);
         
-        return res.status(200).json({ 
-          message: 'Keyword deleted successfully',
+        return success(res, { 
+          keyword: keywordToDelete.toLowerCase(),
           keywords: filteredKeywords 
+        }, {
+          message: 'Keyword deleted successfully',
+          meta: { 
+            count: filteredKeywords.length,
+            timestamp: new Date().toISOString()
+          }
         });
         
       default:

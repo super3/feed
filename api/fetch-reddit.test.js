@@ -1,6 +1,16 @@
 const httpMocks = require('node-mocks-http');
 const fetchRedditHandler = require('./fetch-reddit');
 const { getStorage } = require('../lib/storage');
+const { 
+  createMockStorage, 
+  KEYWORDS, 
+  REDDIT_POSTS,
+  createRedditApiResponse,
+  ERRORS,
+  mockHttpsModule,
+  mockHttpsProxyAgent,
+  setupProxyEnvironment
+} = require('../test/helpers');
 
 // Mock storage
 jest.mock('../lib/storage', () => ({
@@ -47,14 +57,7 @@ describe('/api/fetch-reddit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockStorage = {
-      init: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn(),
-      set: jest.fn(),
-      keys: jest.fn(),
-      smembers: jest.fn(),
-      sadd: jest.fn()
-    };
+    mockStorage = createMockStorage();
     getStorage.mockReturnValue(mockStorage);
 
     req = httpMocks.createRequest({ method: 'POST' });
@@ -74,25 +77,7 @@ describe('/api/fetch-reddit', () => {
     mockStorage.keys.mockResolvedValue([]); // No existing post keys
 
     // Mock Reddit API response
-    const mockRedditResponse = {
-      data: {
-        children: [
-          {
-            data: {
-              id: 'post1',
-              title: 'JavaScript Tips',
-              author: 'user1',
-              permalink: '/r/javascript/comments/post1',
-              created_utc: 1704067200,
-              score: 42,
-              num_comments: 10,
-              subreddit_name_prefixed: 'r/javascript',
-              selftext: 'This is the post content'
-            }
-          }
-        ]
-      }
-    };
+    const mockRedditResponse = createRedditApiResponse([REDDIT_POSTS.javascript]);
 
     global.fetch.mockResolvedValue({
       ok: true,
@@ -104,10 +89,10 @@ describe('/api/fetch-reddit', () => {
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
     
-    expect(data.keywords).toEqual(['javascript', 'react']);
-    expect(data.results.javascript.success).toBe(true);
-    expect(data.results.javascript.newPosts).toBe(1);
-    expect(data.results.javascript.totalFound).toBe(1);
+    expect(data.meta.keywords).toEqual(['javascript', 'react']);
+    expect(data.data.results.javascript.success).toBe(true);
+    expect(data.data.results.javascript.newPosts).toBe(1);
+    expect(data.data.results.javascript.totalFound).toBe(1);
     
     // Verify storage calls
     expect(mockStorage.set).toHaveBeenCalledWith(
@@ -126,14 +111,14 @@ describe('/api/fetch-reddit', () => {
     
     global.fetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ data: { children: [] } })
+      json: async () => createRedditApiResponse([])
     });
 
     await fetchRedditHandler(req, res);
 
-    expect(mockStorage.set).toHaveBeenCalledWith('config:keywords', ['slack']);
+    expect(mockStorage.set).toHaveBeenCalledWith('config:keywords', KEYWORDS.single);
     const data = JSON.parse(res._getData());
-    expect(data.keywords).toEqual(['slack']);
+    expect(data.meta.keywords).toEqual(KEYWORDS.single);
   });
 
   it('should skip already existing items', async () => {
@@ -182,8 +167,8 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.javascript.newPosts).toBe(1);
-    expect(data.results.javascript.totalFound).toBe(2);
+    expect(data.data.results.javascript.newPosts).toBe(1);
+    expect(data.data.results.javascript.totalFound).toBe(2);
   });
 
   it('should handle Reddit API errors', async () => {
@@ -201,8 +186,8 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.javascript.success).toBe(false);
-    expect(data.results.javascript.error).toContain('429');
+    expect(data.data.results.javascript.success).toBe(false);
+    expect(data.data.results.javascript.error).toContain('429');
   });
 
   it('should accept both GET and POST methods', async () => {
@@ -227,9 +212,9 @@ describe('/api/fetch-reddit', () => {
     
     await fetchRedditHandler(req, res);
 
-    expect(res.statusCode).toBe(405);
+    expect(res.statusCode).toBe(ERRORS.method_not_allowed.status);
     const data = JSON.parse(res._getData());
-    expect(data.error).toBe('Method not allowed');
+    expect(data.error).toBe(ERRORS.method_not_allowed.message);
   });
 
   it('should handle storage initialization errors', async () => {
@@ -237,10 +222,10 @@ describe('/api/fetch-reddit', () => {
 
     await fetchRedditHandler(req, res);
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(ERRORS.server_error.status);
     const data = JSON.parse(res._getData());
     expect(data.error).toBe('Failed to fetch Reddit posts');
-    expect(data.message).toBe('Storage init failed');
+    expect(data.details.stack).toContain('Storage init failed');
   });
 
   it('should use proxy when VERCEL and proxy credentials are set', async () => {
@@ -297,7 +282,7 @@ describe('/api/fetch-reddit', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.results.test.success).toBe(true);
+    expect(data.data.results.test.success).toBe(true);
   });
 
   it('should handle proxy request with invalid JSON response', async () => {
@@ -341,7 +326,7 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.test.error).toContain('Invalid JSON response');
+    expect(data.data.results.test.error).toContain('Invalid JSON response');
 
     // Cleanup
     delete process.env.VERCEL;
@@ -363,7 +348,7 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.test.error).toContain('Reddit API error');
+    expect(data.data.results.test.error).toContain('Reddit API error');
   });
 
   it('should handle Reddit API error with error property', async () => {
@@ -379,7 +364,7 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.test.error).toContain('Reddit API error');
+    expect(data.data.results.test.error).toContain('Reddit API error');
   });
 
   it('should handle proxy 403 error gracefully', async () => {
@@ -418,9 +403,10 @@ describe('/api/fetch-reddit', () => {
 
     const data = JSON.parse(res._getData());
     // Should return empty results but not error out
-    expect(data.results.test.success).toBe(true);
-    expect(data.results.test.newPosts).toBe(0);
-    expect(data.results.test.totalFound).toBe(0);
+    expect(data.success).toBe(true);
+    expect(data.data.results.test.success).toBe(true);
+    expect(data.data.results.test.newPosts).toBe(0);
+    expect(data.data.results.test.totalFound).toBe(0);
 
     // Cleanup
     delete process.env.VERCEL;
@@ -464,7 +450,7 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.test.error).toContain('Reddit API error: 500');
+    expect(data.data.results.test.error).toContain('Reddit API error: 500');
 
     // Cleanup
     delete process.env.VERCEL;

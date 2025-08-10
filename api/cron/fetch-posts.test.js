@@ -1,45 +1,27 @@
+const { 
+  createMockStorage,
+  KEYWORDS,
+  REDDIT_POSTS,
+  createRedditApiResponse,
+  ERRORS,
+  mockHttpsModule,
+  mockHttpsProxyAgent,
+  setupProxyEnvironment
+} = require('../../test/helpers');
+
 // Create mocks before requiring the handler
-const mockStorage = {
-  init: jest.fn(),
-  get: jest.fn(),
-  set: jest.fn(),
-  keys: jest.fn(() => []),
-};
+const mockStorage = createMockStorage();
 
 // Mock the storage module to always return the same instance
 jest.mock('../../lib/storage', () => ({
   getStorage: jest.fn(() => mockStorage)
 }));
 
-// Mock https module for proxy requests
-jest.mock('https', () => ({
-  request: jest.fn((options, callback) => {
-    const mockRes = {
-      statusCode: 200,
-      on: jest.fn((event, handler) => {
-        if (event === 'data') {
-          handler(JSON.stringify({
-            data: {
-              children: []
-            }
-          }));
-        } else if (event === 'end') {
-          handler();
-        }
-      })
-    };
-    callback(mockRes);
-    return {
-      on: jest.fn(),
-      end: jest.fn()
-    };
-  })
-}));
+// Mock https proxy agent
+mockHttpsProxyAgent();
 
-// Mock HttpsProxyAgent
-jest.mock('https-proxy-agent', () => ({
-  HttpsProxyAgent: jest.fn()
-}));
+// Mock https module with default empty response
+let mockHttps = mockHttpsModule();
 
 const handler = require('./fetch-posts');
 
@@ -70,17 +52,18 @@ describe('Cron Fetch Posts API', () => {
     // Clear all mocks
     jest.clearAllMocks();
     
-    // Reset mock storage
-    mockStorage.init.mockClear();
-    mockStorage.get.mockClear();
-    mockStorage.set.mockClear();
-    mockStorage.keys.mockClear();
-    mockStorage.keys.mockReturnValue([]);
+    // Reset mock storage to default state
+    Object.keys(mockStorage).forEach(key => {
+      if (typeof mockStorage[key].mockClear === 'function') {
+        mockStorage[key].mockClear();
+      }
+    });
     
     // Reset all mock implementations to defaults
     mockStorage.init.mockResolvedValue(undefined);
     mockStorage.get.mockResolvedValue(null);
     mockStorage.set.mockResolvedValue('OK');
+    mockStorage.keys.mockResolvedValue([]);
     
     // Reset environment variables
     delete process.env.CRON_SECRET;
@@ -90,29 +73,7 @@ describe('Cron Fetch Posts API', () => {
     delete process.env.PROXY_HOST;
     
     // Reset https mock
-    const https = require('https');
-    https.request.mockClear();
-    https.request.mockImplementation((options, callback) => {
-      const mockRes = {
-        statusCode: 200,
-        on: jest.fn((event, handler) => {
-          if (event === 'data') {
-            handler(JSON.stringify({
-              data: {
-                children: []
-              }
-            }));
-          } else if (event === 'end') {
-            handler();
-          }
-        })
-      };
-      callback(mockRes);
-      return {
-        on: jest.fn(),
-        end: jest.fn()
-      };
-    });
+    mockHttps = mockHttpsModule();
   });
 
   afterEach(() => {
@@ -128,9 +89,7 @@ describe('Cron Fetch Posts API', () => {
     global.fetch = jest.fn(() => 
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({
-          data: { children: [] }
-        })
+        json: () => Promise.resolve(createRedditApiResponse([]))
       })
     );
     
@@ -140,13 +99,18 @@ describe('Cron Fetch Posts API', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
-        totalNewPosts: 0,
-        keywords: ['slack']
+        data: expect.objectContaining({
+          results: expect.any(Object)
+        }),
+        meta: expect.objectContaining({
+          totalNewPosts: 0,
+          keywords: KEYWORDS.single
+        })
       })
     );
     
     // Should save default keyword
-    expect(mockStorage.set).toHaveBeenCalledWith('config:keywords', ['slack']);
+    expect(mockStorage.set).toHaveBeenCalledWith('config:keywords', KEYWORDS.single);
   });
 
   it('should execute cron job with existing keywords', async () => {
@@ -190,8 +154,13 @@ describe('Cron Fetch Posts API', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
-        keywords: ['javascript', 'react'],
-        totalNewPosts: 2
+        data: expect.objectContaining({
+          results: expect.any(Object)
+        }),
+        meta: expect.objectContaining({
+          keywords: ['javascript', 'react'],
+          totalNewPosts: 2
+        })
       })
     );
   });
@@ -220,7 +189,9 @@ describe('Cron Fetch Posts API', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
-        totalNewPosts: 0
+        meta: expect.objectContaining({
+          totalNewPosts: 0
+        })
       })
     );
   });
@@ -233,7 +204,10 @@ describe('Cron Fetch Posts API', () => {
     await handler(req, res);
     
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Unauthorized' });
+    expect(res.json).toHaveBeenCalledWith({ 
+      success: false,
+      error: 'Invalid cron secret' 
+    });
   });
 
   it('should accept valid cron secret', async () => {
@@ -276,13 +250,17 @@ describe('Cron Fetch Posts API', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
-        totalNewPosts: 0,
-        results: {
-          test: {
-            success: false,
-            error: 'Network error'
+        data: expect.objectContaining({
+          results: {
+            test: {
+              success: false,
+              error: 'Network error'
+            }
           }
-        }
+        }),
+        meta: expect.objectContaining({
+          totalNewPosts: 0
+        })
       })
     );
   });
@@ -380,7 +358,9 @@ describe('Cron Fetch Posts API', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         success: true,
-        totalNewPosts: 0
+        meta: expect.objectContaining({
+          totalNewPosts: 0
+        })
       })
     );
   });
@@ -428,7 +408,9 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        totalNewPosts: 1
+        meta: expect.objectContaining({
+          totalNewPosts: 1
+        })
       })
     );
   });
@@ -479,9 +461,11 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        results: expect.objectContaining({
-          test: expect.objectContaining({
-            error: expect.stringContaining('Invalid JSON response')
+        data: expect.objectContaining({
+          results: expect.objectContaining({
+            test: expect.objectContaining({
+              error: expect.stringContaining('Invalid JSON response')
+            })
           })
         })
       })
@@ -509,9 +493,11 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        results: expect.objectContaining({
-          test: expect.objectContaining({
-            error: expect.stringContaining('Reddit API error')
+        data: expect.objectContaining({
+          results: expect.objectContaining({
+            test: expect.objectContaining({
+              error: expect.stringContaining('Reddit API error')
+            })
           })
         })
       })
@@ -538,9 +524,11 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        results: expect.objectContaining({
-          test: expect.objectContaining({
-            error: expect.stringContaining('Reddit API error')
+        data: expect.objectContaining({
+          results: expect.objectContaining({
+            test: expect.objectContaining({
+              error: expect.stringContaining('Reddit API error')
+            })
           })
         })
       })
@@ -587,11 +575,13 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        results: expect.objectContaining({
-          test: expect.objectContaining({
-            success: true,
-            newPosts: 0,
-            totalFound: 0
+        data: expect.objectContaining({
+          results: expect.objectContaining({
+            test: expect.objectContaining({
+              success: true,
+              newPosts: 0,
+              totalFound: 0
+            })
           })
         })
       })
@@ -644,9 +634,11 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        results: expect.objectContaining({
-          test: expect.objectContaining({
-            error: expect.stringContaining('Reddit API error: 500')
+        data: expect.objectContaining({
+          results: expect.objectContaining({
+            test: expect.objectContaining({
+              error: expect.stringContaining('Reddit API error: 500')
+            })
           })
         })
       })

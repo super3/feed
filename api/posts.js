@@ -1,5 +1,6 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, serverError } = require('../lib/utils/error-handler');
+const logger = require('../lib/logger');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -8,7 +9,7 @@ module.exports = async (req, res) => {
 
   try {
     const storage = getStorage();
-    console.log('Posts API - Storage type:', storage.type, 'Redis type:', storage.redisType);
+    logger.debug('Posts API initialized', { storageType: storage.type, redisType: storage.redisType });
     await storage.init();
     
     const { keyword } = req.query;
@@ -17,7 +18,7 @@ module.exports = async (req, res) => {
     if (keyword) {
       // Get posts for specific keyword
       const keys = await storage.keys(`posts:${keyword}:*`);
-      console.log(`Found ${keys.length} post keys for keyword: ${keyword}`);
+      logger.debug('Found post keys for keyword', { keyword, keyCount: keys.length });
       
       for (const key of keys) {
         const data = await storage.get(key);
@@ -28,7 +29,7 @@ module.exports = async (req, res) => {
     } else {
       // Get all posts
       const keys = await storage.keys('posts:*');
-      console.log(`Found ${keys.length} total post keys`);
+      logger.debug('Found total post keys', { keyCount: keys.length });
       
       for (const key of keys) {
         const data = await storage.get(key);
@@ -52,10 +53,14 @@ module.exports = async (req, res) => {
       }
     }
     
-    res.status(200).json({
-      count: uniquePosts.length,
-      keyword: keyword || 'all',
-      posts: uniquePosts
+    return success(res, { 
+      posts: uniquePosts 
+    }, {
+      meta: {
+        count: uniquePosts.length,
+        keyword: keyword || 'all',
+        timestamp: new Date().toISOString()
+      }
     });
   } catch (error) {
     serverError(res, error, { context: 'Failed to fetch posts' });

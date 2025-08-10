@@ -1,6 +1,7 @@
 const httpMocks = require('node-mocks-http');
 const postsHandler = require('./posts');
 const { getStorage } = require('../lib/storage');
+const { createMockStorage, REDDIT_POSTS, ERRORS } = require('../test/helpers');
 
 jest.mock('../lib/storage', () => ({
   getStorage: jest.fn()
@@ -11,11 +12,7 @@ describe('/api/posts', () => {
   let req, res;
 
   beforeEach(() => {
-    mockStorage = {
-      init: jest.fn().mockResolvedValue(undefined),
-      keys: jest.fn(),
-      get: jest.fn()
-    };
+    mockStorage = createMockStorage();
     getStorage.mockReturnValue(mockStorage);
 
     req = httpMocks.createRequest({ method: 'GET' });
@@ -30,19 +27,18 @@ describe('/api/posts', () => {
       .mockResolvedValueOnce({
         timestamp: '2024-01-01T10:00:00Z',
         posts: [{
-          id: '1',
+          ...REDDIT_POSTS.javascript,
           title: 'JS Post 1',
-          created: '2024-01-01T09:00:00Z',
-          keyword: 'javascript'
+          created: '2024-01-01T09:00:00Z'
         }]
       })
       .mockResolvedValueOnce({
         timestamp: '2024-01-01T11:00:00Z',
         posts: [{
+          ...REDDIT_POSTS.javascript,
           id: '2',
           title: 'JS Post 2',
-          created: '2024-01-01T10:00:00Z',
-          keyword: 'javascript'
+          created: '2024-01-01T10:00:00Z'
         }]
       });
 
@@ -50,10 +46,11 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.count).toBe(2);
-    expect(data.keyword).toBe('javascript');
-    expect(data.posts).toHaveLength(2);
-    expect(data.posts[0].title).toBe('JS Post 2'); // Newer first
+    expect(data.success).toBe(true);
+    expect(data.meta.count).toBe(2);
+    expect(data.meta.keyword).toBe('javascript');
+    expect(data.data.posts).toHaveLength(2);
+    expect(data.data.posts[0].title).toBe('JS Post 2'); // Newer first
   });
 
   it('should return all posts when no keyword specified', async () => {
@@ -64,14 +61,15 @@ describe('/api/posts', () => {
     mockStorage.get
       .mockResolvedValueOnce({
         posts: [{
+          ...REDDIT_POSTS.javascript,
           id: '1',
           title: 'JS Post',
-          created: '2024-01-01T09:00:00Z',
-          keyword: 'javascript'
+          created: '2024-01-01T09:00:00Z'
         }]
       })
       .mockResolvedValueOnce({
         posts: [{
+          ...REDDIT_POSTS.nodejs,
           id: '2',
           title: 'Python Post',
           created: '2024-01-01T10:00:00Z',
@@ -83,8 +81,9 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.keyword).toBe('all');
-    expect(data.posts).toHaveLength(2);
+    expect(data.success).toBe(true);
+    expect(data.meta.keyword).toBe('all');
+    expect(data.data.posts).toHaveLength(2);
   });
 
   it('should remove duplicate posts', async () => {
@@ -108,7 +107,7 @@ describe('/api/posts', () => {
     await postsHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.posts).toHaveLength(1);
+    expect(data.data.posts).toHaveLength(1);
   });
 
   it('should handle empty results', async () => {
@@ -119,8 +118,9 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.count).toBe(0);
-    expect(data.posts).toEqual([]);
+    expect(data.success).toBe(true);
+    expect(data.meta.count).toBe(0);
+    expect(data.data.posts).toEqual([]);
   });
 
   it('should reject non-GET methods', async () => {
@@ -129,9 +129,9 @@ describe('/api/posts', () => {
 
     await postsHandler(req, res);
 
-    expect(res.statusCode).toBe(405);
+    expect(res.statusCode).toBe(ERRORS.method_not_allowed.status);
     const data = JSON.parse(res._getData());
-    expect(data.error).toBe('Method not allowed');
+    expect(data.error).toBe(ERRORS.method_not_allowed.message);
   });
 
   it('should handle storage errors', async () => {
@@ -141,8 +141,8 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(500);
     const data = JSON.parse(res._getData());
+    expect(data.success).toBe(false);
     expect(data.error).toBe('Failed to fetch posts');
-    expect(data.message).toBe('Storage error');
   });
 
   it('should handle storage returning null data', async () => {
@@ -154,7 +154,7 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.posts).toEqual([]);
+    expect(data.data.posts).toEqual([]);
   });
 
   it('should handle storage returning data without posts property', async () => {
@@ -168,8 +168,8 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.posts).toHaveLength(1);
-    expect(data.posts[0].title).toBe('Valid Post');
+    expect(data.data.posts).toHaveLength(1);
+    expect(data.data.posts[0].title).toBe('Valid Post');
   });
 
   it('should handle storage returning undefined data', async () => {
@@ -181,6 +181,6 @@ describe('/api/posts', () => {
 
     expect(res.statusCode).toBe(200);
     const data = JSON.parse(res._getData());
-    expect(data.posts).toEqual([]);
+    expect(data.data.posts).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed, badRequest, serverError, genericError } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, badRequest, serverError, notFound, validation } = require('../lib/utils/error-handler');
 const { parseYesNoResponse, cleanHtmlEntities, buildAnalysisPrompt } = require('../lib/llm/response-parser');
+const logger = require('../lib/logger');
 
 module.exports = async (req, res) => {
   // Enable CORS
@@ -23,15 +24,16 @@ module.exports = async (req, res) => {
   const requestTimeout = parseInt(process.env.LM_STUDIO_TIMEOUT || '60000'); // Default 60 seconds
 
   try {
-    const { keyword, context, postId } = req.body;
-
-    if (!keyword || !context || !postId) {
-      const missing = [];
-      if (!keyword) missing.push('keyword');
-      if (!context) missing.push('context');
-      if (!postId) missing.push('postId');
-      return badRequest(res, missing);
+    const validationError = validation.validate(req.body, ['keyword', 'context', 'postId'], {
+      keyword: 'string',
+      context: 'string',
+      postId: 'string'
+    });
+    if (validationError) {
+      return badRequest(res, validationError);
     }
+
+    const { keyword, context, postId } = req.body;
 
     // Initialize storage
     const storage = getStorage();
@@ -91,8 +93,8 @@ module.exports = async (req, res) => {
           });
         } catch (fetchError) {
           if (fetchError.name === 'AbortError') {
-            console.error(`Request timeout for post ${post.id}`);
-            return res.status(200).json({ id: post.id, error: 'Request timed out' });
+            logger.warn('LM Studio request timeout', { postId: post.id });
+            return success(res, { id: post.id, error: 'Request timed out' });
           }
           throw fetchError;
         } finally {
@@ -100,8 +102,8 @@ module.exports = async (req, res) => {
         }
 
         if (!response.ok) {
-          console.error('LM Studio error:', response.status);
-          return res.status(200).json({ id: post.id, error: 'LM Studio error' });
+          logger.error('LM Studio API error', { status: response.status });
+          return success(res, { id: post.id, error: 'LM Studio error' });
         }
 
         const aiResponse = await response.json();
@@ -129,7 +131,7 @@ module.exports = async (req, res) => {
         };
         
       } catch (error) {
-        console.error('Error processing post:', error);
+        logger.error('Error processing post for context filtering', { postId: post.id, error: error.message, stack: error.stack });
         result = { id: post.id, error: error.message };
       }
       
@@ -137,10 +139,12 @@ module.exports = async (req, res) => {
     }
 
     if (!postFound) {
-      return genericError(res, 404, 'Post not found');
+      return notFound(res, 'Post not found');
     }
 
-    res.status(200).json(result);
+    return success(res, result, {
+      meta: { timestamp: new Date().toISOString() }
+    });
   } catch (error) {
     serverError(res, error, { 
       context: 'Failed to filter post',

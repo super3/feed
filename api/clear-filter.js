@@ -1,5 +1,5 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed, badRequest, serverError } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, badRequest, serverError, validation } = require('../lib/utils/error-handler');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -7,15 +7,15 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { keyword, postIds } = req.body;
-
-    if (!keyword || !postIds || !Array.isArray(postIds)) {
-      const missing = [];
-      if (!keyword) missing.push('keyword');
-      if (!postIds) missing.push('postIds');
-      if (postIds && !Array.isArray(postIds)) missing.push('postIds (must be array)');
-      return badRequest(res, missing);
+    const validationError = validation.validate(req.body, ['keyword', 'postIds'], { 
+      keyword: 'string',
+      postIds: 'array'
+    });
+    if (validationError) {
+      return badRequest(res, validationError);
     }
+
+    const { keyword, postIds } = req.body;
 
     const storage = getStorage();
     await storage.init();
@@ -53,9 +53,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    res.status(200).json({ 
+    return success(res, { 
       clearedCount,
       keyword
+    }, {
+      message: `Cleared filter data for ${clearedCount} posts`,
+      meta: { timestamp: new Date().toISOString() }
     });
   } catch (error) {
     serverError(res, error, { context: 'Failed to clear filter' });

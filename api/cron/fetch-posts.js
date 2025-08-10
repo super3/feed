@@ -1,7 +1,8 @@
 const { getStorage } = require('../../lib/storage');
-const { methodNotAllowed, serverError } = require('../../lib/utils/error-handler');
+const { success, methodNotAllowed, serverError, unauthorized } = require('../../lib/utils/error-handler');
 const { fetchRedditPosts } = require('../../lib/reddit-client');
 const config = require('../../lib/config');
+const logger = require('../../lib/logger');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -9,8 +10,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('Cron job triggered at:', new Date().toISOString());
-    console.log('Authorization:', req.headers.authorization ? 'Present' : 'Not present');
+    logger.info('Cron job triggered', { timestamp: new Date().toISOString() });
+    logger.debug('Authorization header', { present: req.headers.authorization ? true : false });
     
     // Optional security check for cron jobs
     if (config.security.hasCronSecret) {
@@ -18,23 +19,22 @@ module.exports = async (req, res) => {
       const providedSecret = authHeader?.replace('Bearer ', '');
       
       if (providedSecret !== config.security.cronSecret) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Invalid cron secret');
       }
     }
     
     const storage = getStorage();
-    console.log('Storage type:', storage.type);
-    console.log('Redis type:', storage.redisType);
+    logger.debug('Storage initialized', { type: storage.type, redisType: storage.redisType });
     
     await storage.init();
     
     // Get keywords from storage or use default
     const keywordsKey = config.keys.keywords;
     let keywords = await storage.get(keywordsKey);
-    console.log('Retrieved keywords from storage:', keywords);
+    logger.debug('Retrieved keywords from storage', { keywords, count: keywords?.length || 0 });
     
     if (!keywords || keywords.length === 0) {
-      console.log(`No keywords found, setting default: ${config.reddit.defaultKeyword}`);
+      logger.info('No keywords found, using default', { defaultKeyword: config.reddit.defaultKeyword });
       keywords = [config.reddit.defaultKeyword]; // Default keyword
       await storage.set(keywordsKey, keywords);
     }
@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
         };
         totalNewPosts += result.newPosts;
       } catch (error) {
-        console.error(`Error fetching posts for ${keyword}:`, error);
+        logger.error('Error fetching posts for keyword', { keyword, error: error.message, stack: error.stack });
         results[keyword] = {
           success: false,
           error: error.message
@@ -65,14 +65,18 @@ module.exports = async (req, res) => {
       }
     }
 
-    console.log(`Cron job completed. Total new posts: ${totalNewPosts}`);
+    logger.info('Cron job completed', { totalNewPosts, keywords: keywords.length });
 
-    res.status(200).json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      keywords: keywords,
-      totalNewPosts: totalNewPosts,
-      results: results
+    return success(res, { 
+      results: results 
+    }, {
+      message: 'Cron job completed successfully',
+      meta: {
+        timestamp: new Date().toISOString(),
+        keywords: keywords,
+        totalNewPosts: totalNewPosts,
+        keywordCount: keywords.length
+      }
     });
   } catch (error) {
     serverError(res, error, { context: 'Cron job failed' });

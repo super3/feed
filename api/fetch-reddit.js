@@ -1,7 +1,8 @@
 const { getStorage } = require('../lib/storage');
-const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
+const { success, methodNotAllowed, serverError } = require('../lib/utils/error-handler');
 const { fetchRedditPosts } = require('../lib/reddit-client');
 const config = require('../lib/config');
+const logger = require('../lib/logger');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -9,26 +10,24 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('Fetch Reddit API called');
-    console.log('Environment:', {
+    logger.info('Fetch Reddit API called', {
       hasRedisUrl: config.storage.hasRedisUrl,
       nodeVersion: process.version,
       platform: process.platform
     });
     
     const storage = getStorage();
-    console.log('Storage type:', storage.type);
-    console.log('Redis type:', storage.redisType);
+    logger.debug('Storage initialized', { type: storage.type, redisType: storage.redisType });
     
     await storage.init();
     
     // Get keywords from storage or use default
     const keywordsKey = config.keys.keywords;
     let keywords = await storage.get(keywordsKey);
-    console.log('Retrieved keywords from storage:', keywords);
+    logger.debug('Retrieved keywords from storage', { keywords, count: keywords?.length || 0 });
     
     if (!keywords || keywords.length === 0) {
-      console.log(`No keywords found, setting default: ${config.reddit.defaultKeyword}`);
+      logger.info('No keywords found, using default', { defaultKeyword: config.reddit.defaultKeyword });
       keywords = [config.reddit.defaultKeyword]; // Default keyword
       await storage.set(keywordsKey, keywords);
     }
@@ -51,7 +50,7 @@ module.exports = async (req, res) => {
         };
         totalNewPosts += result.newPosts;
       } catch (error) {
-        console.error(`Error fetching posts for ${keyword}:`, error);
+        logger.error('Error fetching posts for keyword', { keyword, error: error.message, stack: error.stack });
         results[keyword] = {
           success: false,
           error: error.message,
@@ -60,11 +59,15 @@ module.exports = async (req, res) => {
       }
     }
 
-    res.status(200).json({
-      timestamp: new Date().toISOString(),
-      keywords: keywords,
-      totalNewPosts: totalNewPosts,
-      results: results
+    return success(res, { 
+      results: results 
+    }, {
+      meta: {
+        timestamp: new Date().toISOString(),
+        keywords: keywords,
+        totalNewPosts: totalNewPosts,
+        keywordCount: keywords.length
+      }
     });
   } catch (error) {
     serverError(res, error, { context: 'Failed to fetch Reddit posts' });
