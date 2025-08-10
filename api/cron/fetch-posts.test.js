@@ -1,7 +1,5 @@
 // Create mocks before requiring the handler
 const mockStorage = {
-  type: 'local',
-  redisType: undefined,
   init: jest.fn(),
   get: jest.fn(),
   set: jest.fn(),
