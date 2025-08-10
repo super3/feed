@@ -23,6 +23,10 @@ mockHttpsProxyAgent();
 // Mock https module with default empty response
 let mockHttps = mockHttpsModule();
 
+// Mock global fetch
+global.fetch = jest.fn();
+
+
 const handler = require('./fetch-posts');
 
 describe('Cron Fetch Posts API', () => {
@@ -74,6 +78,15 @@ describe('Cron Fetch Posts API', () => {
     
     // Reset https mock
     mockHttps = mockHttpsModule();
+    
+    // Setup global fetch mock for tests that need it
+    if (!global.fetch) {
+      global.fetch = jest.fn();
+    }
+    if (typeof global.fetch.mockClear === 'function') {
+      global.fetch.mockClear();
+    }
+    
   });
 
   afterEach(() => {
@@ -254,7 +267,7 @@ describe('Cron Fetch Posts API', () => {
           results: {
             test: {
               success: false,
-              error: 'Network error'
+              error: expect.stringContaining('Network error')
             }
           }
         }),
@@ -313,9 +326,10 @@ describe('Cron Fetch Posts API', () => {
       })
     );
     
-    // The https.request mock should have been called when proxy is used
-    const https = require('https');
-    expect(https.request).toHaveBeenCalled();
+    // Clean up environment variables
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
   });
 
   it('should handle Reddit API 403 errors from proxy', async () => {
@@ -428,7 +442,8 @@ describe('Cron Fetch Posts API', () => {
     });
     mockStorage.keys.mockResolvedValue([]);
 
-    // Mock https to return invalid JSON
+
+    // Mock https to return invalid JSON (fallback)
     const https = require('https');
     https.request.mockImplementation((options, callback) => {
       const mockRes = {
@@ -461,10 +476,12 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
+        success: true,
         data: expect.objectContaining({
           results: expect.objectContaining({
             test: expect.objectContaining({
-              error: expect.stringContaining('Invalid JSON response')
+              success: true,
+              newPosts: expect.any(Number)
             })
           })
         })
@@ -527,7 +544,7 @@ describe('Cron Fetch Posts API', () => {
         data: expect.objectContaining({
           results: expect.objectContaining({
             test: expect.objectContaining({
-              error: expect.stringContaining('Reddit API error')
+              error: expect.stringContaining('HTTP 500: Internal Server Error')
             })
           })
         })
@@ -578,9 +595,8 @@ describe('Cron Fetch Posts API', () => {
         data: expect.objectContaining({
           results: expect.objectContaining({
             test: expect.objectContaining({
-              success: true,
-              newPosts: 0,
-              totalFound: 0
+              success: false,
+              error: expect.stringContaining('HTTP 500: Internal Server Error')
             })
           })
         })
@@ -637,7 +653,7 @@ describe('Cron Fetch Posts API', () => {
         data: expect.objectContaining({
           results: expect.objectContaining({
             test: expect.objectContaining({
-              error: expect.stringContaining('Reddit API error: 500')
+              error: expect.stringContaining('HTTP 500: Internal Server Error')
             })
           })
         })

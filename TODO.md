@@ -17,12 +17,14 @@
 - [x] Make configuration dynamic for testing (getters for env vars)
 - [x] All tests passing (90/90)
 
-### 3. Simplify Storage to Upstash Only ✅
-- [x] Remove local file storage implementation  
-- [x] Remove standard Redis implementation
-- [x] Keep only Upstash Redis support
-- [x] Simplify storage.js from 268 lines to 126 lines
-- [x] Update all tests to work with simplified implementation
+### 3. Refactor Storage with Hybrid Approach ✅
+- [x] Remove standard Redis implementation (non-Upstash)
+- [x] Keep Upstash Redis as primary storage for production
+- [x] Restore local file storage as fallback for development environments
+- [x] Implement automatic detection: use Upstash when credentials available, fallback to local otherwise
+- [x] Update storage.js to support both modes (227 lines with fallback logic)
+- [x] Fix production regression where app broke without Upstash credentials
+- [x] Update all tests to validate fallback behavior
 
 ## Medium Priority
 
@@ -47,24 +49,27 @@
 
 ## Low Priority
 
-### 7. Remove Dead Code
-- [ ] Verify and remove `api/debug.js` if unused
-- [ ] Verify and remove `api/filter-context-individual.js` if unused
-- [ ] Verify and remove `api/clear-filter.js` if unused
-- [ ] Verify and remove `lib/llm/response-parser.js` if unused
-- [ ] Clean up any other orphaned files
+### 7. Remove Dead Code ✅
+- [x] Verified and removed `api/debug.js` (unused debugging endpoint)
+- [x] Verified `api/filter-context-individual.js` is actively used (AI filtering feature)
+- [x] Verified `api/clear-filter.js` is actively used (clears AI filter data)
+- [x] Verified `lib/llm/response-parser.js` is actively used (parses LLM responses)
+- [x] No other orphaned files found
 
-### 8. Improve Environment Handling
-- [ ] Remove hardcoded `/tmp` paths for Vercel
-- [ ] Separate deployment concerns from business logic
-- [ ] Create environment-specific configuration strategies
-- [ ] Use dependency injection for environment-specific behavior
+### 8. Improve Environment Handling ✅
+- [x] Removed hardcoded `/tmp` paths - now configurable via VERCEL_DATA_DIR env var
+- [x] Separated deployment concerns with environment strategies
+- [x] Created environment-specific configuration strategies (vercel, development, production, test)
+- [x] Added environment-specific settings (logLevel, maxWorkers, dataDir)
+- [x] Made configuration injectable and testable
 
-### 9. Create HTTP Client Wrapper
-- [ ] Create `lib/http-client.js` to wrap https module
-- [ ] Move proxy configuration logic into wrapper
-- [ ] Simplify Reddit API calls
-- [ ] Add retry logic and better error handling
+### 9. Create HTTP Client Wrapper ✅
+- [x] Created `lib/http-client.js` with full HTTP client implementation
+- [x] Moved proxy configuration logic into wrapper (automatic proxy detection)
+- [x] Simplified Reddit API calls with `redditRequest` method
+- [x] Added retry logic with exponential backoff (3 retries by default)
+- [x] Added timeout handling and rate limit detection
+- [x] Implemented singleton pattern for efficient resource usage
 
 ### 10. Add Type Safety and Documentation
 - [ ] Add JSDoc comments to all functions
