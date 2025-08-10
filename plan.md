@@ -73,8 +73,10 @@
   - [x] Update URL params when filtering (e.g., `?keyword=javascript`)
 
 ### 6. Configure Vercel
-- [ ] Create `vercel.json`:
-  - [ ] Add cron job for `/api/fetch-reddit` (every 10 minutes)
+- [x] External cron setup (using cron-job.org instead of Vercel cron):
+  - [x] Set up cron-job.org to call `/api/cron/fetch-posts` every 10 minutes
+  - [x] No vercel.json needed for cron configuration
+- [ ] Create `vercel.json` (if needed for other configs):
   - [ ] Set Node.js version to 22
   - [ ] Configure redirects if needed
 - [x] Update `package.json`:
