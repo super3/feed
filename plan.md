@@ -43,13 +43,13 @@
 - [x] Install `@upstash/redis` package
 - [ ] Create Redis instance
 - [x] Update code to use Redis instead of JSON files:
-  - [ ] Store posted IDs in Redis set per keyword: `posted:${keyword}:${postId}`
-  - [ ] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
-  - [ ] Store keyword configuration: `config:keywords` (array)
-- [ ] Data structure:
-  - [ ] Each post includes the keyword it was fetched for
-  - [ ] Posts can appear under multiple keywords if matched
-  - [ ] Maintain separate posted ID sets per keyword
+  - [x] Store posted IDs in Redis set per keyword: `posted:${keyword}:${postId}`
+  - [x] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
+  - [x] Store keyword configuration: `config:keywords` (array)
+- [x] Data structure:
+  - [x] Each post includes the keyword it was fetched for
+  - [x] Posts can appear under multiple keywords if matched
+  - [x] Maintain separate posted ID sets per keyword
 - [x] Create keyword management:
   - [x] `/api/keywords.js` - GET/POST/DELETE keywords
   - [x] Default keywords if none configured
@@ -81,7 +81,7 @@
   - [x] Add `@upstash/redis` dependency
   - [x] Add `express` for local development
   - [x] Remove `node-fetch` (native fetch in Node 22)
-  - [ ] Update scripts for Vercel (pending)
+  - [x] Update scripts for Vercel
   - [x] Add `"dev": "node server.js"` script for local testing
 
 ### 7. AI Filtering Queue System
@@ -202,21 +202,37 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
   test.yml
 /api
   clear-filter.js
+  /cron
+    fetch-posts.js
+    fetch-posts.test.js
   fetch-reddit.js
   fetch-reddit.test.js
-  filter-context.js
   filter-context-individual.js
-  filter-queue.js (new)
+  filter-queue.js (new - not implemented)
   keywords.js
   keywords.test.js
   posts.js
   posts.test.js
 /lib
+  config.js
+  config.test.js
+  http-client.js
+  http-client.test.js
+  logger.js
+  logger.test.js
+  reddit-client.js
   storage.js
   storage.test.js
+  storage-local.test.js
+  /llm
+    response-parser.js
+  /test/helpers
+    index.js
+    mock-reddit-api.js
+    mock-storage.js
+    test-fixtures.js
   /utils
     error-handler.js
-    response-parser.js
 /public
   favicon.svg
   index.html
