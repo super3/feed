@@ -2,6 +2,35 @@ const { getStorage } = require('../lib/storage');
 const { success, methodNotAllowed, badRequest, serverError } = require('../lib/utils/error-handler');
 const logger = require('../lib/logger');
 
+// Helper function to add posts to queue directly
+async function addToQueue(posts, keyword, storage) {
+  const timestamp = Date.now();
+  const queueItems = [];
+
+  for (const post of posts) {
+    const queueKey = `queue:filter:${timestamp}:${post.id}`;
+    const queueItem = {
+      postId: post.id,
+      title: post.title,
+      selftext: post.selftext,
+      keyword: keyword,
+      timestamp: timestamp,
+      status: 'pending',
+      addedAt: new Date().toISOString()
+    };
+    
+    await storage.set(queueKey, queueItem);
+    queueItems.push({ key: queueKey, ...queueItem });
+  }
+
+  const stats = await storage.get('queue:stats') || { total: 0, pending: 0, processed: 0, failed: 0 };
+  stats.total += posts.length;
+  stats.pending += posts.length;
+  await storage.set('queue:stats', stats);
+
+  return { count: posts.length, items: queueItems };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -32,20 +61,8 @@ module.exports = async (req, res) => {
         selftext: post.selftext || ''
       }));
 
-      const response = await fetch(`${req.headers.host ? 'http://' + req.headers.host : ''}/api/filter-queue/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          posts: postsToQueue,
-          keyword: `${keyword} (context: ${context})`
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add posts to queue');
-      }
-
-      const result = await response.json();
+      // Directly add to queue instead of making HTTP call
+      const result = await addToQueue(postsToQueue, `${keyword} (context: ${context})`, storage);
 
       for (const post of posts) {
         const keys = await storage.keys(`posts:${keyword}:*`);
