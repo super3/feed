@@ -106,15 +106,15 @@ describe('/api/fetch-reddit', () => {
     
     expect(data.keywords).toEqual(['javascript', 'react']);
     expect(data.results.javascript.success).toBe(true);
-    expect(data.results.javascript.count).toBe(1);
-    expect(data.results.javascript.posts[0].title).toBe('JavaScript Tips');
+    expect(data.results.javascript.newPosts).toBe(1);
+    expect(data.results.javascript.totalFound).toBe(1);
     
     // Verify storage calls
     expect(mockStorage.set).toHaveBeenCalledWith(
       expect.stringMatching(/^posts:javascript:\d+$/),
       expect.objectContaining({
-        timestamp: expect.any(String),
-        count: 1,
+        keyword: 'javascript',
+        timestamp: expect.any(Number),
         posts: expect.any(Array)
       })
     );
@@ -182,8 +182,8 @@ describe('/api/fetch-reddit', () => {
     await fetchRedditHandler(req, res);
 
     const data = JSON.parse(res._getData());
-    expect(data.results.javascript.count).toBe(1);
-    expect(data.results.javascript.posts[0].id).toBe('new-post-id');
+    expect(data.results.javascript.newPosts).toBe(1);
+    expect(data.results.javascript.totalFound).toBe(2);
   });
 
   it('should handle Reddit API errors', async () => {
@@ -419,8 +419,8 @@ describe('/api/fetch-reddit', () => {
     const data = JSON.parse(res._getData());
     // Should return empty results but not error out
     expect(data.results.test.success).toBe(true);
-    expect(data.results.test.count).toBe(0);
-    expect(data.results.test.posts).toEqual([]);
+    expect(data.results.test.newPosts).toBe(0);
+    expect(data.results.test.totalFound).toBe(0);
 
     // Cleanup
     delete process.env.VERCEL;

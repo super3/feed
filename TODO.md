@@ -2,10 +2,12 @@
 
 ## High Priority
 
-### 1. Eliminate Code Duplication
-- [ ] Extract duplicate `fetchRedditPosts` function from `api/fetch-reddit.js` and `api/cron/fetch-posts.js`
-- [ ] Create `lib/reddit-client.js` to centralize Reddit API interactions
-- [ ] Remove 100+ lines of duplicated code
+### 1. Eliminate Code Duplication ✅
+- [x] Extract duplicate `fetchRedditPosts` function from `api/fetch-reddit.js` and `api/cron/fetch-posts.js`
+- [x] Create `lib/reddit-client.js` to centralize Reddit API interactions
+- [x] Remove 100+ lines of duplicated code
+- [x] Update all tests to match new response format
+- [x] Verify all tests pass (90/90 passing)
 
 ### 2. Create Configuration Module
 - [ ] Create `lib/config.js` to centralize all configuration

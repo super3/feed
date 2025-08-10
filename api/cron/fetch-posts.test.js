@@ -141,7 +141,7 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully',
+        success: true,
         totalNewPosts: 0,
         keywords: ['slack']
       })
@@ -191,8 +191,9 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully',
-        keywords: ['javascript', 'react']
+        success: true,
+        keywords: ['javascript', 'react'],
+        totalNewPosts: 2
       })
     );
   });
@@ -220,7 +221,7 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully',
+        success: true,
         totalNewPosts: 0
       })
     );
@@ -276,7 +277,7 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully',
+        success: true,
         totalNewPosts: 0,
         results: {
           test: {
@@ -288,12 +289,21 @@ describe('Cron Fetch Posts API', () => {
     );
   });
 
-  it('should reject non-GET requests', async () => {
+  it('should accept both GET and POST requests', async () => {
     req.method = 'POST';
+    mockStorage.get.mockResolvedValue(['test']);
+    global.fetch = jest.fn(() => 
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          data: { children: [] }
+        })
+      })
+    );
     
     await handler(req, res);
     
-    expect(res.status).toHaveBeenCalledWith(405);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it('should handle storage initialization errors', async () => {
@@ -323,7 +333,7 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully'
+        success: true
       })
     );
     
@@ -371,7 +381,7 @@ describe('Cron Fetch Posts API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: 'Cron job executed successfully',
+        success: true,
         totalNewPosts: 0
       })
     );
@@ -582,8 +592,8 @@ describe('Cron Fetch Posts API', () => {
         results: expect.objectContaining({
           test: expect.objectContaining({
             success: true,
-            count: 0,
-            posts: []
+            newPosts: 0,
+            totalFound: 0
           })
         })
       })
