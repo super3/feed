@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
 
   try {
     const storage = getStorage();
-    logger.debug('Posts API initialized', { storageType: storage.type, redisType: storage.redisType });
+    logger.debug('Posts API initialized', { storageType: storage.type });
     await storage.init();
     
     const { keyword } = req.query;

@@ -54,7 +54,8 @@ async function loadKeywords() {
   try {
     const response = await fetch('/api/keywords');
     const data = await response.json();
-    keywords = data.keywords || [];
+    // Handle new standardized API response format
+    keywords = data.data?.keywords || data.keywords || [];
     updateKeywordsDisplay();
     updateFilterOptions();
     
@@ -98,7 +99,8 @@ async function addKeyword() {
       }
     } else {
       const error = await response.json();
-      alert(error.error || 'Failed to add keyword');
+      // Handle new standardized error format
+      alert(error.details?.error || error.error || error.message || 'Failed to add keyword');
     }
   } catch (error) {
     console.error('Error adding keyword:', error);
@@ -175,7 +177,8 @@ async function loadPosts() {
       
     const response = await fetch(url);
     const data = await response.json();
-    posts = data.posts || [];
+    // Handle new standardized API response format
+    posts = data.data?.posts || data.posts || [];
     
     // Check if any posts have filter information
     const hasFilteredPosts = posts.some(post => post.filterContext && post.isRelevant !== undefined);
@@ -295,10 +298,13 @@ async function fetchNewPosts() {
     const response = await fetch('/api/fetch-reddit', { method: 'POST' });
     const data = await response.json();
     
+    // Handle new standardized API response format
+    const results = data.data?.results || data.results || {};
+    
     // Count total new posts and collect all posts
     let totalNew = 0;
     let allNewPosts = [];
-    Object.values(data.results).forEach(result => {
+    Object.values(results).forEach(result => {
       if (result.success) {
         totalNew += result.count;
         if (result.posts) {
@@ -429,7 +435,8 @@ async function applyContextFilter() {
         
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.hint || error.error || 'Failed to filter post');
+          // Handle new standardized error format
+          throw new Error(error.hint || error.details?.error || error.error || error.message || 'Failed to filter post');
         }
         
         const result = await response.json();
