@@ -34,6 +34,6 @@
     "node-mocks-http": "^1.13.0"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.x"
   }
 }
