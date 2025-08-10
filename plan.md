@@ -39,9 +39,9 @@
   - [x] Store posts with keyword metadata
 
 ### 4. Set Up Storage (Redis via Upstash)
-- [ ] Enable Upstash Redis in Vercel dashboard (or other Redis provider)
+- [x] Enable Upstash Redis in Vercel dashboard (or other Redis provider)
 - [x] Install `@upstash/redis` package
-- [ ] Create Redis instance
+- [x] Create Redis instance
 - [x] Update code to use Redis instead of JSON files:
   - [x] Store posted IDs in Redis set per keyword: `posted:${keyword}:${postId}`
   - [x] Store post data with keyword prefix: `posts:${keyword}:${timestamp}`
@@ -128,11 +128,11 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
 5. [ ] Test with multiple concurrent workers
 
 ### 8. Environment Variables
-- [ ] Set up in Vercel dashboard:
-  - [ ] `UPSTASH_REDIS_REST_URL` - Redis URL from Upstash
-  - [ ] `UPSTASH_REDIS_REST_TOKEN` - Redis token from Upstash
-  - [ ] `QUEUE_TIMEOUT` - Max time for processing (default: 300s)
-  - [ ] `WORKER_AUTH_TOKEN` - Optional auth token for worker clients
+- [x] Set up in Vercel dashboard:
+  - [x] `UPSTASH_REDIS_REST_URL` - Redis URL from Upstash
+  - [x] `UPSTASH_REDIS_REST_TOKEN` - Redis token from Upstash
+  - [ ] `QUEUE_TIMEOUT` - Max time for processing (default: 300s) - Not implemented yet
+  - [ ] `WORKER_AUTH_TOKEN` - Optional auth token for worker clients - Not implemented yet
 
 ### 9. Testing with Jest
 - [x] Install Jest and testing dependencies:
