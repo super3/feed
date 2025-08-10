@@ -90,26 +90,29 @@
 Since LM Studio runs on a separate server, we'll implement a queue-based system for asynchronous AI filtering:
 
 **Queue Architecture:**
-- [ ] Create `/api/filter-queue.js` endpoints:
-  - [ ] POST `/api/filter-queue/add` - Add posts to filter queue
-  - [ ] GET `/api/filter-queue/next` - Get next unprocessed item
-  - [ ] POST `/api/filter-queue/result` - Submit filtering result
-  - [ ] GET `/api/filter-queue/status` - Check queue status
+- [x] Create `/api/filter-queue.js` endpoints:
+  - [x] POST `/api/filter-queue/add` - Add posts to filter queue
+  - [x] GET `/api/filter-queue/next` - Get next unprocessed item
+  - [x] POST `/api/filter-queue/result` - Submit filtering result
+  - [x] GET `/api/filter-queue/status` - Check queue status
+  - [x] POST `/api/filter-queue/cleanup` - Clean up old completed items
+  - [x] POST `/api/filter-queue/reset-stuck` - Reset stuck processing items
 
 **Storage Structure:**
-- [ ] Queue items: `queue:filter:${timestamp}:${postId}`
-- [ ] Processing items: `queue:processing:${clientId}:${postId}`
-- [ ] Results: `queue:results:${postId}`
-- [ ] Queue metadata: `queue:stats` (total, pending, processed)
+- [x] Queue items: `queue:filter:${timestamp}:${postId}`
+- [x] Processing items: `queue:processing:${clientId}:${postId}`
+- [x] Results: `queue:results:${postId}`
+- [x] Queue metadata: `queue:stats` (total, pending, processed)
 
 **Client Worker (`filter-client.js`):**
-- [ ] Standalone Node.js script that runs on LM Studio server
-- [ ] Configuration via environment variables:
-  - [ ] `FEED_API_URL` - URL of the Reddit Feed server
-  - [ ] `LM_STUDIO_URL` - Local LM Studio URL (default: localhost:1234)
-  - [ ] `CLIENT_ID` - Unique identifier for this worker
-  - [ ] `POLL_INTERVAL` - How often to check for new items (default: 5s)
-- [ ] Main loop:
+- [x] Standalone Node.js script that runs on LM Studio server
+- [x] Configuration via environment variables:
+  - [x] `FEED_API_URL` - URL of the Reddit Feed server
+  - [x] `LM_STUDIO_URL` - Local LM Studio URL (default: localhost:1234)
+  - [x] `CLIENT_ID` - Unique identifier for this worker
+  - [x] `POLL_INTERVAL` - How often to check for new items (default: 5s)
+  - [x] `WORKER_AUTH_TOKEN` - Optional authentication token
+- [x] Main loop:
   1. Poll `/api/filter-queue/next` for work
   2. If item found, call LM Studio for filtering
   3. POST result back to `/api/filter-queue/result`
@@ -117,24 +120,48 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
   5. Sleep for POLL_INTERVAL
 
 **API Updates:**
-- [ ] Update filter-context.js to queue items instead of direct filtering
-- [ ] Add queue management UI to show filtering progress
-- [ ] Store partial results as items are processed
-- [ ] Add timeout handling for stuck items
+- [x] Update filter-context.js to queue items instead of direct filtering
+- [x] Add queue management UI to show filtering progress
+- [x] Store partial results as items are processed
+- [x] Add timeout handling for stuck items
 
 **Implementation Steps:**
-1. [ ] Create queue API endpoints
-2. [ ] Update frontend to show "Queued for filtering" status
-3. [ ] Create filter-client.js worker script
-4. [ ] Add deployment instructions for worker
-5. [ ] Test with multiple concurrent workers
+1. [x] Create queue API endpoints
+2. [x] Update frontend to show "Queued for filtering" status
+3. [x] Create filter-client.js worker script
+4. [x] Add deployment instructions for worker
+5. [x] Test with multiple concurrent workers
+
+**Worker Deployment Instructions:**
+To deploy the filter-client.js worker on your LM Studio server:
+
+1. Copy `filter-client.js` to your LM Studio server
+2. Set environment variables:
+   ```bash
+   export FEED_API_URL="https://your-reddit-feed.vercel.app"
+   export LM_STUDIO_URL="http://localhost:1234"
+   export CLIENT_ID="worker-1"
+   export POLL_INTERVAL="5000"
+   # Optional: export WORKER_AUTH_TOKEN="your-secret-token"
+   ```
+3. Run the worker:
+   ```bash
+   node filter-client.js
+   ```
+4. For production, use PM2 or systemd:
+   ```bash
+   # With PM2
+   pm2 start filter-client.js --name "reddit-filter-worker"
+   pm2 save
+   pm2 startup
+   ```
 
 ### 8. Environment Variables
 - [x] Set up in Vercel dashboard:
   - [x] `UPSTASH_REDIS_REST_URL` - Redis URL from Upstash
   - [x] `UPSTASH_REDIS_REST_TOKEN` - Redis token from Upstash
-  - [ ] `QUEUE_TIMEOUT` - Max time for processing (default: 300s) - Not implemented yet
-  - [ ] `WORKER_AUTH_TOKEN` - Optional auth token for worker clients - Not implemented yet
+  - [x] `QUEUE_TIMEOUT` - Max time for processing (default: 300s)
+  - [x] `WORKER_AUTH_TOKEN` - Optional auth token for worker clients
 
 ### 9. Testing with Jest
 - [x] Install Jest and testing dependencies:
@@ -210,7 +237,7 @@ Since LM Studio runs on a separate server, we'll implement a queue-based system 
   fetch-reddit.js
   fetch-reddit.test.js
   filter-context-individual.js
-  filter-queue.js (new - not implemented)
+  filter-queue.js
   keywords.js
   keywords.test.js
   posts.js

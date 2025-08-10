@@ -48,6 +48,16 @@
         <h2>Posts</h2>
         <button id="clear-filter-btn" class="btn btn-grey" style="display: none;">Clear Filter</button>
       </div>
+      <div id="queue-status" class="queue-status" style="display: none;">
+        <h3>Filter Queue Status</h3>
+        <div class="queue-stats">
+          <span>Total: <span id="queue-total">0</span></span>
+          <span>Pending: <span id="queue-pending">0</span></span>
+          <span>Processing: <span id="queue-processing">0</span></span>
+          <span>Completed: <span id="queue-completed">0</span></span>
+        </div>
+        <button id="refresh-queue-btn" class="btn btn-secondary">Refresh Status</button>
+      </div>
       <div id="posts-container" class="posts-container">
         <p class="loading">Loading posts...</p>
       </div>

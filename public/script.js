@@ -353,183 +353,181 @@ function filterByContext() {
   applyContextFilter();
 }
 
-// Apply context filter
+// Apply context filter using queue system
 async function applyContextFilter() {
   let context = contextInput.value.trim();
   if (!context) {
     context = 'the note-taking app';
-    contextInput.value = context; // Show the default in the input
+    contextInput.value = context;
   }
   
   contextFilter = context;
   
-  // Filter status box removed - no longer needed
+  // Show queue status
+  const queueStatus = document.getElementById('queue-status');
+  if (queueStatus) {
+    queueStatus.style.display = 'block';
+  }
   
-  // Add filtering class only to unfiltered posts (not already relevant or filtered-out)
-  const postCards = document.querySelectorAll('.post-card');
-  postCards.forEach(card => {
-    // Only add filtering class if the post hasn't been filtered yet
-    if (!card.classList.contains('relevant') && !card.classList.contains('filtered-out')) {
-      card.classList.add('filtering');
-    }
-  });
-  
-  // Update title immediately (will be updated with count later)
+  // Update title
   const postsTitle = document.querySelector('.posts-section h2');
   if (postsTitle) {
     if (currentFilter) {
-      // Find the keyword object to get its stored context
-      const keywordObj = keywords.find(k => 
-        (typeof k === 'string' ? k : k.keyword) === currentFilter
-      );
-      const storedContext = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
-      
-      // Only show filter context if it's different from stored context
-      if (storedContext && storedContext !== context) {
-        postsTitle.textContent = `Posts about ${currentFilter} (${storedContext}) - filtering by "${context}"`;
-      } else {
-        postsTitle.textContent = `Posts about ${currentFilter} (${context})`;
-      }
+      postsTitle.textContent = `Posts about ${currentFilter} - queueing for filter "${context}"`;
     } else {
-      postsTitle.textContent = `Posts - filtering by "${context}"`;
+      postsTitle.textContent = `Posts - queueing for filter "${context}"`;
     }
   }
-  
-  let relevantCount = 0;
-  let processedCount = 0;
-  let skippedCount = 0;
   
   try {
-    // Get all post IDs
-    const postIds = posts.map(p => p.id);
+    // Get unfiltered posts
+    const unfiltered = posts.filter(post => !post.filterContext || post.isRelevant === undefined);
     
-    // Process posts one by one
-    for (let i = 0; i < postIds.length; i++) {
-      const postId = postIds[i];
-      const post = posts.find(p => p.id === postId);
-      const postIndex = posts.findIndex(p => p.id === postId);
-      const card = postCards[postIndex];
-      
-      if (!post || !card) continue;
-      
-      // Skip if already filtered (has filterContext and isRelevant is set)
-      if (post.filterContext && post.isRelevant !== undefined) {
-        skippedCount++;
-        if (post.isRelevant) relevantCount++;
-        continue;
-      }
-      
-      try {
-        // Call API for individual post
-        const response = await fetch('/api/filter-context-individual', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            keyword: currentFilter,
-            context: context,
-            postId: postId
-          })
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          // Handle new standardized error format
-          throw new Error(error.hint || error.details?.error || error.error || error.message || 'Failed to filter post');
-        }
-        
-        const result = await response.json();
-        
-        // Remove filtering class and apply result immediately
-        card.classList.remove('filtering');
-        
-        if (result.error) {
-          // Individual post error - treat as not relevant
-          card.classList.add('filtered-out');
-        } else if (result.relevant) {
-          card.classList.add('relevant');
-          relevantCount++;
-        } else {
-          card.classList.add('filtered-out');
-        }
-        
-        // Add reasoning to the card
-        if (result.reasoning) {
-          addReasoningToCard(card, result.reasoning);
-        }
-        
-        // Update the post object with filter info
-        post.filterContext = context;
-        post.isRelevant = result.relevant;
-        post.filterReason = result.reasoning;
-        
-        processedCount++;
-        
-        // Update button count dynamically
-        const remainingUnfiltered = posts.filter(post => !post.filterContext || post.isRelevant === undefined).length;
-        filterByContextBtn.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
-          </svg>
-          Filter${remainingUnfiltered > 0 ? ` (${remainingUnfiltered})` : ''}
-        `;
-        
-      } catch (error) {
-        console.error(`Error filtering post ${postId}:`, error);
-        // On error, mark as filtered out
-        card.classList.remove('filtering');
-        card.classList.add('filtered-out');
-        processedCount++;
-      }
+    if (unfiltered.length === 0) {
+      alert('No posts to filter');
+      return;
     }
     
-    // Final status update - update the title instead
-    const totalFiltered = processedCount + skippedCount;
-    const postsTitle = document.querySelector('.posts-section h2');
-    if (postsTitle) {
-      if (currentFilter) {
-        // Find the keyword object to get its stored context
-        const keywordObj = keywords.find(k => 
-          (typeof k === 'string' ? k : k.keyword) === currentFilter
-        );
-        const storedContext = keywordObj && typeof keywordObj === 'object' ? keywordObj.context : null;
-        
-        // Only show filter context if it's different from stored context
-        if (storedContext && storedContext !== context) {
-          postsTitle.textContent = `Posts about ${currentFilter} (${storedContext}) - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
-        } else {
-          postsTitle.textContent = `Posts about ${currentFilter} (${context}) - ${relevantCount} of ${totalFiltered} relevant`;
-        }
-      } else {
-        postsTitle.textContent = `Posts - filtering by "${context}" - ${relevantCount} of ${totalFiltered} relevant`;
-      }
-    }
-    
-    // Filter status box removed - no longer needed
-    
-    // Show clear button
-    clearFilterBtn.style.display = 'inline-flex';
-    
-    // Reload posts to ensure storage is in sync
-    setTimeout(() => loadPosts(), 100);
-    
-  } catch (error) {
-    console.error('Context filtering error:', error);
-    
-    // Remove filtering state from remaining posts
-    document.querySelectorAll('.post-card.filtering').forEach(card => {
-      card.classList.remove('filtering');
+    // Queue posts for filtering
+    const response = await fetch('/api/filter-context', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        keyword: currentFilter || 'general',
+        context: context,
+        posts: unfiltered.map(p => ({
+          id: p.id,
+          title: p.title,
+          selftext: p.selftext || ''
+        }))
+      })
     });
     
-    // If it's likely LM Studio is not running, provide helpful message
-    if (error.message.includes('LM Studio')) {
-      alert('Unable to connect to LM Studio. Please ensure it is running on http://localhost:1234');
-    } else {
-      alert(`Filtering failed: ${error.message}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to queue posts');
     }
+    
+    const result = await response.json();
+    alert(`Queued ${result.count} posts for filtering. Check queue status for progress.`);
+    
+    // Mark posts as queued
+    const postCards = document.querySelectorAll('.post-card');
+    unfiltered.forEach(post => {
+      const postIndex = posts.findIndex(p => p.id === post.id);
+      if (postIndex >= 0 && postCards[postIndex]) {
+        postCards[postIndex].classList.add('filtering');
+      }
+    });
+    
+    // Start polling for results
+    startQueuePolling();
+    
+  } catch (error) {
+    console.error('Error queueing posts for filtering:', error);
+    alert(`Failed to queue posts: ${error.message}`);
   }
 }
+
+// Poll queue status and update UI
+let queuePollInterval = null;
+
+async function startQueuePolling() {
+  // Clear any existing interval
+  if (queuePollInterval) {
+    clearInterval(queuePollInterval);
+  }
+  
+  // Initial check
+  await checkQueueStatus();
+  
+  // Poll every 2 seconds
+  queuePollInterval = setInterval(async () => {
+    const hasProcessing = await checkQueueStatus();
+    if (!hasProcessing) {
+      clearInterval(queuePollInterval);
+      queuePollInterval = null;
+    }
+  }, 2000);
+}
+
+async function checkQueueStatus() {
+  try {
+    const response = await fetch('/api/filter-queue/status');
+    if (!response.ok) return false;
+    
+    const data = await response.json();
+    
+    // Update stats
+    document.getElementById('queue-total').textContent = data.stats.total || 0;
+    document.getElementById('queue-pending').textContent = data.stats.pending || 0;
+    document.getElementById('queue-processing').textContent = data.processing || 0;
+    document.getElementById('queue-completed').textContent = data.stats.processed || 0;
+    
+    // Check for completed items
+    if (data.recentItems && data.recentItems.completed) {
+      for (const item of data.recentItems.completed) {
+        await updatePostWithResult(item.postId);
+      }
+    }
+    
+    // Return true if still processing
+    return (data.stats.pending > 0 || data.processing > 0);
+    
+  } catch (error) {
+    console.error('Error checking queue status:', error);
+    return false;
+  }
+}
+
+async function updatePostWithResult(postId) {
+  try {
+    const response = await fetch(`/api/filter-context?postId=${postId}`);
+    if (!response.ok) return;
+    
+    const result = await response.json();
+    
+    if (result.status === 'completed') {
+      const postIndex = posts.findIndex(p => p.id === postId);
+      if (postIndex >= 0) {
+        const post = posts[postIndex];
+        const postCards = document.querySelectorAll('.post-card');
+        const card = postCards[postIndex];
+        
+        if (card) {
+          card.classList.remove('filtering');
+          
+          if (result.relevant) {
+            card.classList.add('relevant');
+          } else {
+            card.classList.add('filtered-out');
+          }
+          
+          if (result.reasoning) {
+            addReasoningToCard(card, result.reasoning);
+          }
+        }
+        
+        // Update post object
+        post.filterContext = contextFilter;
+        post.isRelevant = result.relevant;
+        post.filterReason = result.reasoning;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating post with result:', error);
+  }
+}
+
+// Manual refresh queue status
+document.addEventListener('DOMContentLoaded', () => {
+  const refreshBtn = document.getElementById('refresh-queue-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', checkQueueStatus);
+  }
+});
 
 // Add reasoning to a post card
 function addReasoningToCard(card, reasoning) {
