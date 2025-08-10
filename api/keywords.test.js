@@ -187,5 +187,72 @@ describe('/api/keywords', () => {
 
       console.error = originalConsoleError;
     });
+
+    it('should handle POST with mixed format existing keywords', async () => {
+      req.method = 'POST';
+      req.body = { keyword: 'react' };
+
+      // Mock mixed format keywords (strings and objects) - need to mock get once for the check
+      mockStorage.get.mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }]);
+
+      await keywordsHandler(req, res);
+
+      expect(res.statusCode).toBe(409);
+      const data = JSON.parse(res._getData());
+      expect(data.error).toBe('Keyword already exists');
+    });
+
+    it('should add keyword when storage has mixed format keywords', async () => {
+      req.method = 'POST';
+      req.body = { keyword: 'vue' };
+
+      // Mock mixed format keywords - need to mock get twice (once for check, once for update)
+      mockStorage.get
+        .mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }])
+        .mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }]);
+      mockStorage.set.mockResolvedValue('OK');
+
+      await keywordsHandler(req, res);
+
+      expect(res.statusCode).toBe(201);
+      expect(mockStorage.set).toHaveBeenCalledWith(
+        'config:keywords',
+        ['javascript', { keyword: 'react', context: 'frontend' }, { keyword: 'vue', context: null }]
+      );
+    });
+
+    it('should handle DELETE with mixed format keywords', async () => {
+      req.method = 'DELETE';
+      req.query = { keyword: 'javascript' };
+
+      // Mock mixed format keywords
+      mockStorage.get.mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }, 'vue']);
+      mockStorage.set.mockResolvedValue('OK');
+
+      await keywordsHandler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(mockStorage.set).toHaveBeenCalledWith(
+        'config:keywords',
+        [{ keyword: 'react', context: 'frontend' }, 'vue']
+      );
+    });
+
+    it('should handle DELETE with object format keyword', async () => {
+      req.method = 'DELETE';
+      req.query = { keyword: 'react' };
+
+      // Mock mixed format keywords
+      mockStorage.get.mockResolvedValueOnce(['javascript', { keyword: 'react', context: 'frontend' }, 'vue']);
+      mockStorage.set.mockResolvedValue('OK');
+
+      await keywordsHandler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(mockStorage.set).toHaveBeenCalledWith(
+        'config:keywords',
+        ['javascript', 'vue']
+      );
+    });
   });
 });

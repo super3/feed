@@ -424,4 +424,268 @@ describe('Cron Fetch Posts API', () => {
       })
     );
   });
+
+  it('should handle proxy request with invalid JSON response', async () => {
+    // Set up for proxy usage
+    process.env.VERCEL = '1';
+    process.env.PROXY_USER = 'testuser';
+    process.env.PROXY_PASS = 'testpass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
+
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
+
+    // Mock https to return invalid JSON
+    const https = require('https');
+    https.request.mockImplementation((options, callback) => {
+      const mockRes = {
+        statusCode: 200,
+        statusMessage: 'OK',
+        on: jest.fn()
+      };
+      callback(mockRes);
+      
+      // Call data handler with invalid JSON
+      const dataHandler = mockRes.on.mock.calls.find(call => call[0] === 'data')?.[1];
+      if (dataHandler) {
+        dataHandler('not valid json{{{');
+      }
+      
+      // Call end handler
+      const endHandler = mockRes.on.mock.calls.find(call => call[0] === 'end')?.[1];
+      if (endHandler) {
+        endHandler();
+      }
+      
+      return {
+        on: jest.fn(),
+        end: jest.fn()
+      };
+    });
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results: expect.objectContaining({
+          test: expect.objectContaining({
+            error: expect.stringContaining('Invalid JSON response')
+          })
+        })
+      })
+    );
+
+    // Cleanup
+    delete process.env.VERCEL;
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
+  });
+
+  it('should handle responseData.ok false without error property', async () => {
+    // Set up for proxy usage
+    process.env.VERCEL = '1';
+    process.env.PROXY_USER = 'testuser';
+    process.env.PROXY_PASS = 'testpass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
+
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
+
+    // Mock https to return response with ok: false but no error property
+    const https = require('https');
+    https.request.mockImplementation((options, callback) => {
+      const mockRes = {
+        statusCode: 200,
+        statusMessage: 'OK',
+        on: jest.fn()
+      };
+      callback(mockRes);
+      
+      // Call data handler with response that has ok: false
+      const dataHandler = mockRes.on.mock.calls.find(call => call[0] === 'data')?.[1];
+      if (dataHandler) {
+        dataHandler(JSON.stringify({ ok: false }));
+      }
+      
+      // Call end handler
+      const endHandler = mockRes.on.mock.calls.find(call => call[0] === 'end')?.[1];
+      if (endHandler) {
+        endHandler();
+      }
+      
+      return {
+        on: jest.fn(),
+        end: jest.fn()
+      };
+    });
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results: expect.objectContaining({
+          test: expect.objectContaining({
+            error: expect.stringContaining('Reddit API error')
+          })
+        })
+      })
+    );
+
+    // Cleanup
+    delete process.env.VERCEL;
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
+  });
+
+  it('should handle Reddit API error with error property', async () => {
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
+
+    // Mock fetch to return error in response
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: jest.fn().mockResolvedValue({
+        ok: false,
+        error: 'Reddit API is down'
+      })
+    });
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results: expect.objectContaining({
+          test: expect.objectContaining({
+            error: expect.stringContaining('Reddit API is down')
+          })
+        })
+      })
+    );
+  });
+
+  it('should handle proxy 403 error gracefully', async () => {
+    // Set up for proxy usage
+    process.env.VERCEL = '1';
+    process.env.PROXY_USER = 'testuser';
+    process.env.PROXY_PASS = 'testpass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
+
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
+
+    // Mock https to return 403 error
+    const https = require('https');
+    https.request.mockImplementation((options, callback) => {
+      const mockRes = {
+        statusCode: 403,
+        statusMessage: 'Forbidden',
+        on: jest.fn()
+      };
+      callback(mockRes);
+      
+      // Call end handler
+      const endHandler = mockRes.on.mock.calls.find(call => call[0] === 'end')?.[1];
+      if (endHandler) {
+        endHandler();
+      }
+      
+      return {
+        on: jest.fn(),
+        end: jest.fn()
+      };
+    });
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results: expect.objectContaining({
+          test: expect.objectContaining({
+            success: true,
+            posts: 0
+          })
+        })
+      })
+    );
+
+    // Cleanup
+    delete process.env.VERCEL;
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
+  });
+
+  it('should handle proxy non-200/403 status code', async () => {
+    // Set up for proxy usage
+    process.env.VERCEL = '1';
+    process.env.PROXY_USER = 'testuser';
+    process.env.PROXY_PASS = 'testpass';
+    process.env.PROXY_HOST = 'proxy.example.com:8080';
+
+    mockStorage.get.mockImplementation((key) => {
+      if (key === 'config:keywords') return ['test'];
+      return null;
+    });
+    mockStorage.keys.mockResolvedValue([]);
+
+    // Mock https to return other error status
+    const https = require('https');
+    https.request.mockImplementation((options, callback) => {
+      const mockRes = {
+        statusCode: 500,
+        statusMessage: 'Internal Server Error',
+        on: jest.fn()
+      };
+      callback(mockRes);
+      
+      // Call end handler
+      const endHandler = mockRes.on.mock.calls.find(call => call[0] === 'end')?.[1];
+      if (endHandler) {
+        endHandler();
+      }
+      
+      return {
+        on: jest.fn(),
+        end: jest.fn()
+      };
+    });
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        results: expect.objectContaining({
+          test: expect.objectContaining({
+            error: expect.stringContaining('Reddit API error: 500')
+          })
+        })
+      })
+    );
+
+    // Cleanup
+    delete process.env.VERCEL;
+    delete process.env.PROXY_USER;
+    delete process.env.PROXY_PASS;
+    delete process.env.PROXY_HOST;
+  });
 });

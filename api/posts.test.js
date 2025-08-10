@@ -144,4 +144,43 @@ describe('/api/posts', () => {
     expect(data.error).toBe('Failed to fetch posts');
     expect(data.message).toBe('Storage error');
   });
+
+  it('should handle storage returning null data', async () => {
+    req.query = { keyword: 'javascript' };
+    mockStorage.keys.mockResolvedValue(['posts:javascript:123']);
+    mockStorage.get.mockResolvedValue(null);
+
+    await postsHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const data = JSON.parse(res._getData());
+    expect(data.posts).toEqual([]);
+  });
+
+  it('should handle storage returning data without posts property', async () => {
+    req.query = { keyword: 'javascript' };
+    mockStorage.keys.mockResolvedValue(['posts:javascript:123', 'posts:javascript:456']);
+    mockStorage.get
+      .mockResolvedValueOnce({ notPosts: 'wrong structure' })
+      .mockResolvedValueOnce({ posts: [{ id: '1', title: 'Valid Post' }] });
+
+    await postsHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const data = JSON.parse(res._getData());
+    expect(data.posts).toHaveLength(1);
+    expect(data.posts[0].title).toBe('Valid Post');
+  });
+
+  it('should handle storage returning undefined data', async () => {
+    req.query = { keyword: 'javascript' };
+    mockStorage.keys.mockResolvedValue(['posts:javascript:123']);
+    mockStorage.get.mockResolvedValue(undefined);
+
+    await postsHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const data = JSON.parse(res._getData());
+    expect(data.posts).toEqual([]);
+  });
 });
