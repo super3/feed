@@ -166,10 +166,12 @@ describe('/api/keywords', () => {
   });
 
   describe('Error handling', () => {
-    it('should handle storage errors', async () => {
+    beforeEach(() => {
       req = httpMocks.createRequest({ method: 'GET' });
       res = httpMocks.createResponse();
-      
+    });
+
+    it('should handle storage errors', async () => {
       // Mock storage to throw an error
       mockStorage.init.mockRejectedValue(new Error('Storage error'));
 
