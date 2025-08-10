@@ -1,6 +1,7 @@
 const { getStorage } = require('../lib/storage');
 const { methodNotAllowed, serverError } = require('../lib/utils/error-handler');
 const { fetchRedditPosts } = require('../lib/reddit-client');
+const config = require('../lib/config');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -10,7 +11,7 @@ module.exports = async (req, res) => {
   try {
     console.log('Fetch Reddit API called');
     console.log('Environment:', {
-      hasRedisUrl: !!process.env.REDIS_URL,
+      hasRedisUrl: config.storage.hasRedisUrl,
       nodeVersion: process.version,
       platform: process.platform
     });
@@ -22,13 +23,13 @@ module.exports = async (req, res) => {
     await storage.init();
     
     // Get keywords from storage or use default
-    const keywordsKey = 'config:keywords';
+    const keywordsKey = config.keys.keywords;
     let keywords = await storage.get(keywordsKey);
     console.log('Retrieved keywords from storage:', keywords);
     
     if (!keywords || keywords.length === 0) {
-      console.log('No keywords found, setting default: slack');
-      keywords = ['slack']; // Default keyword
+      console.log(`No keywords found, setting default: ${config.reddit.defaultKeyword}`);
+      keywords = [config.reddit.defaultKeyword]; // Default keyword
       await storage.set(keywordsKey, keywords);
     }
 
@@ -54,7 +55,7 @@ module.exports = async (req, res) => {
         results[keyword] = {
           success: false,
           error: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          stack: config.environment.isDevelopment ? error.stack : undefined
         };
       }
     }

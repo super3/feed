@@ -1,6 +1,7 @@
 const { getStorage } = require('../../lib/storage');
 const { methodNotAllowed, serverError } = require('../../lib/utils/error-handler');
 const { fetchRedditPosts } = require('../../lib/reddit-client');
+const config = require('../../lib/config');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -12,11 +13,11 @@ module.exports = async (req, res) => {
     console.log('Authorization:', req.headers.authorization ? 'Present' : 'Not present');
     
     // Optional security check for cron jobs
-    if (process.env.CRON_SECRET) {
+    if (config.security.hasCronSecret) {
       const authHeader = req.headers.authorization;
       const providedSecret = authHeader?.replace('Bearer ', '');
       
-      if (providedSecret !== process.env.CRON_SECRET) {
+      if (providedSecret !== config.security.cronSecret) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
     }
@@ -28,13 +29,13 @@ module.exports = async (req, res) => {
     await storage.init();
     
     // Get keywords from storage or use default
-    const keywordsKey = 'config:keywords';
+    const keywordsKey = config.keys.keywords;
     let keywords = await storage.get(keywordsKey);
     console.log('Retrieved keywords from storage:', keywords);
     
     if (!keywords || keywords.length === 0) {
-      console.log('No keywords found, setting default: slack');
-      keywords = ['slack']; // Default keyword
+      console.log(`No keywords found, setting default: ${config.reddit.defaultKeyword}`);
+      keywords = [config.reddit.defaultKeyword]; // Default keyword
       await storage.set(keywordsKey, keywords);
     }
 

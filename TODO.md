@@ -9,11 +9,13 @@
 - [x] Update all tests to match new response format
 - [x] Verify all tests pass (90/90 passing)
 
-### 2. Create Configuration Module
-- [ ] Create `lib/config.js` to centralize all configuration
-- [ ] Move all environment variables to single location
-- [ ] Include: Redis/Upstash settings, proxy configuration, API endpoints, default values
-- [ ] Remove scattered `process.env` calls throughout codebase
+### 2. Create Configuration Module ✅
+- [x] Create `lib/config.js` to centralize all configuration
+- [x] Move all environment variables to single location
+- [x] Include: Redis/Upstash settings, proxy configuration, API endpoints, default values
+- [x] Remove scattered `process.env` calls throughout codebase
+- [x] Make configuration dynamic for testing (getters for env vars)
+- [x] All tests passing (90/90)
 
 ### 3. Refactor Storage with Strategy Pattern
 - [ ] Split `lib/storage.js` (currently 95+ lines handling 3 Redis implementations)
